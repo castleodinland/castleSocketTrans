@@ -150,7 +150,7 @@ class Application(Frame):
         """
         if len(list_ini_files)==0:
             print ("No WriteIMEI.ini found!\n exit\n")
-            self.lb_title["text"] = "No WriteIMEI.ini!"
+            self.lb_title["text"] = "Error:No WriteIMEI.ini!"
             self.hi_there["state"] = "active"
             return
         
