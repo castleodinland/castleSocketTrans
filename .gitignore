@@ -231,4 +231,5 @@ src/1310016-2007/*
 src/build/*
 src/dist/*
 
-
+#make exe build
+src\PyInstaller-2.1\imei_cal_match_it_50_gui\*
