@@ -18,6 +18,8 @@ the_first_lay_dir = False
 #v1.1101Beta -->fix bug when checking band support
 #v1.1105Beta -->add a new Entry to appoint Cal PATH
 #v1.1111Beta -->add a Progressbar
+#v1.1119Beta -->add overlap check for imei and chip id
+
 
 class Application(Frame):
 
@@ -88,8 +90,63 @@ class Application(Frame):
         for tPair in self.IMEIAndChipIDPair:
             if(tPair[1] == chipid):
                 return tPair[0]
-        #return 0
+        return 0
+        
+    def get_chipid_by_imei(self, imei):
+        #print "get_chipid_by_imei:", imei
+        for tPair in self.IMEIAndChipIDPair:
+            #print "have see", tPair[0][0:13]
+            if(tPair[0][0:14] == imei):
+                return tPair[1]
+        return self.a_null_chip_id
 
+    def get_full_imei_by_imei(self, imei):
+        for tPair in self.IMEIAndChipIDPair:
+        #print "have see", tPair[0][0:13]
+            if(tPair[0][0:14] == imei):
+                return tPair[0]
+        return ''
+
+    def if_cal_file_exist(self, chipid):
+        for node in self.lallCalNumInCal:
+            if(node == chipid):
+                return True 
+        return False
+
+    def if_cal_file_is_dual_defualt(self, chipid):
+        for node in self.lDUALDefaultCalByChipID:
+            if(node == chipid):
+                return True
+        return False
+    
+    def if_cal_file_is_quad_defualt(self, chipid):
+        for node in self.lQUADDefaultCalByChipID:
+            if(node == chipid):
+                return True
+        return False
+    
+    def if_cal_file_is_bad_cal(self, chipid):
+        for node in self.lIsNULLBandCalByChipID:
+            if(node == chipid):
+                return True
+        return False        
+        
+    def hold_abnormal_pair_from(self):
+        abnormal_pair = []
+        sub_abnormal_pair = []
+        for tpair in self.totalView:
+            if(tpair[1] == self.a_null_chip_id or tpair[2] != 1 or tpair[3] != 0
+               or tpair[4] != 0 or tpair[5] != 0 or tpair[6] != 0 or tpair[7] != 0):
+                abnormal_pair.append(tpair)
+                if(tpair[6] != 0):
+                    for ttpair in self.totalView:
+                        if(ttpair[1] == tpair[1] and ttpair[0] != tpair[0]):
+                            sub_abnormal_pair.append(ttpair)
+           
+        return abnormal_pair, sub_abnormal_pair
+
+    
+                
     def do_clean_work(self):
         del self.lallCalNumInCal[:]
         del self.lallCalNumInINI[:]
@@ -103,6 +160,8 @@ class Application(Frame):
         del self.IMEIAndChipIDPair[:]
 
         del self.list_ini_files[:]
+        
+        del self.totalView[:]
     
     def run_check(self, tpath, thead, ttail, calpath):
         
@@ -195,7 +254,10 @@ class Application(Frame):
         #print list(mixCalNum)
         
         outResultFileHandle.write("\ncalibration numbers in ini but not in cal:\n")
-        outResultFileHandle.write("\n".join(list(allCalNumInINI-mixCalNum)))
+        #outResultFileHandle.write("\n".join(list(allCalNumInINI-mixCalNum)))
+        for tChipID in list(allCalNumInINI-mixCalNum):
+            outResultFileHandle.write("%s--->%s\n" %(tChipID, self.get_imei_by_chipid(tChipID)))
+            
         outResultFileHandle.write("\ntotally %d items found!\n" %(len(list(allCalNumInINI-mixCalNum))))
         outResultFileHandle.write("=============================================================================================================\n\n")
         
@@ -243,7 +305,73 @@ class Application(Frame):
         
         outResultFileHandle.close()#close result.txt
         
-        #Comparison Table
+        #Comparison Table, now is the total view
+        #total view: <imei><chip id><is cal exist><DUAL is defult><QUAD is defult><cal is bad>[be chipid overlap][imei overlap]
+        #init total view:
+        for i in range(int(thead),int(ttail)+1):
+            t_pair = [i, self.a_null_chip_id, 0, 1, 1, 1, 0, 0]
+            self.totalView.append(t_pair)
+        
+        for tpair in self.totalView:
+         
+            tpair[1] = self.get_chipid_by_imei(str(tpair[0]))
+            
+            #check over-lapped imei:
+            if(tpair[1] != self.a_null_chip_id):
+                temp_imei = self.get_imei_by_chipid(tpair[1])
+                
+                if(str(tpair[0]) == temp_imei[0:14]):
+                    pass  
+                else:#may use a used chip id
+                    tpair[6] = tpair[6] + 1
+            else:
+                pass
+
+            temp_imei = self.get_full_imei_by_imei(str(tpair[0]))
+            if(len(temp_imei) != 0):
+                tpair[0] = temp_imei[:14] + '|' + temp_imei[14:]
+            else:
+                tpair[0] = str(tpair[0]) + '|X'
+                       
+            tpair[2] = self.if_cal_file_exist(tpair[1])
+            tpair[3] = self.if_cal_file_is_dual_defualt(tpair[1])
+            tpair[4] = self.if_cal_file_is_quad_defualt(tpair[1])
+            tpair[5] = self.if_cal_file_is_bad_cal(tpair[1])            
+
+            #print("See total view: %dX--->%s--->%d:%d:%d:%d" %(tpair[0], tpair[1], tpair[2], tpair[3], tpair[4], tpair[5])) 
+            
+            #check over-lapped imei:
+            same_imei_pair = []
+            for ttPair in self.IMEIAndChipIDPair:
+                if(ttPair[0][:14] == tpair[0][:14] and len(ttPair[0]) != 0):
+                    same_imei_pair.append(ttPair)
+            set_for_same_imei_pair = set(same_imei_pair)
+            if(len(set_for_same_imei_pair) > 1):
+                tpair[7] = len(set_for_same_imei_pair)
+                
+            #print "SAME IMEI : %d" %(len(set_for_same_imei_pair))
+            #print same_imei_pair
+        abnormal_pair,sub_abnormal_pair = self.hold_abnormal_pair_from()
+        
+        outResultFileHandle = open("TotalView.txt",'w+')
+        outResultFileHandle.write("********The Total View Table For Check:********\n\n")
+        outResultFileHandle.write("Total count theoretically: %d\n\n" %(len(self.totalView)))
+        outResultFileHandle.write("[IMEI]--->[Chip ID]--->([have cal] [is dual defualt][is quad defualt] [is bad])=([chipid overlap]=[imei overlap])\n")
+        for tpair in self.totalView:
+            outResultFileHandle.write("%s--->%s--->(%d=====%d=====%d=====%d)=====(%d=====%d)\n" %(tpair[0], tpair[1], tpair[2], tpair[3], tpair[4], tpair[5], tpair[6], tpair[7]))
+        
+        outResultFileHandle.write("\n\n********The Total View Summary:********\n\n")
+        outResultFileHandle.write("Total abnormal data: %d\n\n" %(len(abnormal_pair)))
+        for tpair in abnormal_pair:
+            outResultFileHandle.write("%s--->%s--->(%d=====%d=====%d=====%d)=====(%d=====%d)\n" %(tpair[0], tpair[1], tpair[2], tpair[3], tpair[4], tpair[5], tpair[6], tpair[7]))
+        
+        outResultFileHandle.write("\n\nTotal sub-abnormal data: %d\n\n" %(len(sub_abnormal_pair)))
+        for tpair in sub_abnormal_pair:
+            outResultFileHandle.write("%s--->%s--->(%d=====%d=====%d=====%d)=====(%d=====%d)\n" %(tpair[0], tpair[1], tpair[2], tpair[3], tpair[4], tpair[5], tpair[6], tpair[7]))
+        
+        outResultFileHandle.close()
+        
+        #==============================================================================#
         outResultFileHandle = open("ComparisonTable.txt",'w+')
         outResultFileHandle.write("The Comparison Table For IMEI and ChipID:\n\n")
         
@@ -252,7 +380,8 @@ class Application(Frame):
             outResultFileHandle.write("%s======>%s\n" %(tPair[0], tPair[1]))
         
         outResultFileHandle.close()#close ComparisonTable.txt
-    
+        #==============================================================================#
+
         #Band Confirm table
         outResultFileHandle = open("BandConfirm.txt",'w+') 
         outResultFileHandle.write("Band Confirm table:\n\n")
@@ -304,6 +433,7 @@ class Application(Frame):
         self.contents = StringVar()
         # set it to some value
         self.contents.set("input work space path here...")
+        #self.contents.set("1307004-1008-t")
         # tell the entry widget to watch this variable
         self.entrythingy["textvariable"] = self.contents
 
@@ -326,23 +456,25 @@ class Application(Frame):
        
         vcmd = (self.register(self.validate),'%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
         #head
-        self.imeihead = Entry(validate = 'key', validatecommand = vcmd, justify = "left",width = 40)
+        self.imeihead = Entry(validate = 'key', justify = "left",width = 40)
         self.imeihead.pack({"side": "top"})
 
         # here is the application variable
         self.contentshead = StringVar()
         # set it to some value
         self.contentshead.set("00000000000000")
+        #self.contentshead.set("35909402000003")
         self.imeihead["textvariable"] = self.contentshead
         
         #tail
-        self.imeitail = Entry(validate = 'key', validatecommand = vcmd, justify = "left",width = 40)
+        self.imeitail = Entry(validate = 'key', justify = "left",width = 40)
         self.imeitail.pack({"side": "top"})
 
         # here is the application variable
         self.contentstail = StringVar()
         # set it to some value
-        self.contentstail.set("99999999999999")
+        self.contentstail.set("00000000000008")
+        #self.contentstail.set("35909402000008")
         self.imeitail["textvariable"] = self.contentstail
         
         self.QUIT = Button(self, relief=RAISED, width = 15)
@@ -401,13 +533,16 @@ class Application(Frame):
         
         self.resultOfCompFile = 0
         
-        self.version_info = "imei_cal_match_it version v1.1111Beta"
+        self.totalView = []
+        
+        self.version_info = "imei_cal_match_it version v1.1119Beta"
+        self.a_null_chip_id = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+        
+        self.overlaped_imei = [] #different imei use same chipid with cal
         
         Frame.__init__(self, master)
         self.pack()
         self.createWidgets()
-        
-        
         
 if __name__=="__main__":
     root = Tk()

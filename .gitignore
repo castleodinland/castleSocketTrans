@@ -221,6 +221,7 @@ src/BandConfirm.txt
 src/castle.txt
 src/ComparisonTable.txt
 src/result.txt
+src/TotalView.txt
 src/123456_new/*
 src/123456-98530/*
 src/1307004-1008/*
@@ -232,4 +233,4 @@ src/build/*
 src/dist/*
 
 #make exe build
-src\PyInstaller-2.1\imei_cal_match_it_50_gui\*
+src/PyInstaller-2.1/imei_cal_match_it_50_gui/*
