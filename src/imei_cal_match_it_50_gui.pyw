@@ -4,6 +4,7 @@
 import Tkinter
 from Tkinter import *
 import ttk
+import os
 from os.path import walk, join, normpath, isdir, isfile, abspath
 import sys
 import re
@@ -11,6 +12,8 @@ import re
 import filecmp
 import time
 import thread
+#import xlrd
+import xlwt
 
 the_first_lay_dir = False
 
@@ -19,7 +22,7 @@ the_first_lay_dir = False
 #v1.1105Beta -->add a new Entry to appoint Cal PATH
 #v1.1111Beta -->add a Progressbar
 #v1.1119Beta -->add overlap check for imei and chip id
-
+#v1.1121Beta -->output excel as report, need install xlwt module first for your python
 
 class Application(Frame):
 
@@ -31,7 +34,8 @@ class Application(Frame):
         fullfilename = [abspath(join(dirname,tfile)) for tfile in names]
         #copy it, $file and $fullfilename are one-one correspondence
         if(dirname == self.contents.get()):
-            print "totall files:" + dirname + "===>" +str(len(file))+"\n"
+            pass
+            #print "totall files:" + dirname + "===>" +str(len(file))+"\n"
         for i in range(0,len(file)):
             if isfile(fullfilename[i]):#only save files
                 #save WriteIMEI*.ini files
@@ -183,12 +187,7 @@ class Application(Frame):
         
         self.pbar.config(value=110)
         
-        outResultFileHandle = open("result.txt",'w+')
-        
-        """
-        check *.cal files imei inside and outside
-        """
-        outResultFileHandle.write("Check calibration files consistency\n")
+
      
         """
         Parse the imei from WriteIMEI*.ini
@@ -240,6 +239,13 @@ class Application(Frame):
         #    print tPair[0]+"=====>"+tPair[1]+"\n"
     
         #self.pbar.config(value=90)
+    
+        outResultFileHandle = open("result.txt",'w+')
+        
+        """
+        check *.cal files imei inside and outside
+        """
+        outResultFileHandle.write("Check calibration files consistency\n")
     
         """
         save the two lists in set and get the intersection 
@@ -402,6 +408,20 @@ class Application(Frame):
         outResultFileHandle.write("END")
         outResultFileHandle.close()#close BandConfirm.txt
         
+        #delete txt that we use excel now
+        os.remove("ComparisonTable.txt")
+        os.remove("BandConfirm.txt")
+        os.remove("result.txt")
+        os.remove("TotalView.txt")
+        
+        #excel:::
+        workbook = xlwt.Workbook()
+        self.form_total_view_excel(workbook)
+        self.form_result_excel(workbook)
+        self.form_band_confirm_excel(workbook)
+        self.form_comparison_excel(workbook)
+        workbook.save('TotalView.xls')
+        
         #INPUT_SOME = raw_input("Press ENTER key to exit.")
         self.lb_title["text"] = "FINISHED!"
         self.do_clean_work()
@@ -503,6 +523,343 @@ class Application(Frame):
         else:
             return False
 
+    def init_font_style(self):
+        #title font and style
+        titlefont = xlwt.Font() # Create Font 
+        titlefont.bold = True # Set font to Bold 
+        titlefont.name = 'Verdana'#'Times New Roman'
+        titlefont.height =  20 * 12 #12ptx
+
+        titlepattern = xlwt.Pattern()
+        titlepattern.pattern = xlwt.Pattern.SOLID_PATTERN
+        titlepattern.pattern_fore_colour = xlwt.Style.colour_map['turquoise']#Search in Style.py for _colour_map_text
+
+        self.title_style = xlwt.XFStyle() # Create Style 
+        self.title_style.font = titlefont # Add Bold Font to Style 
+        self.title_style.pattern = titlepattern
+
+        #sub title font and style
+        subtitlefont = xlwt.Font() # Create Font 
+        subtitlefont.bold = True # Set font to Bold 
+        subtitlefont.name = 'Verdana'#'Times New Roman'
+        subtitlefont.height =  20 * 12 #12ptx
+
+        subtitlepattern = xlwt.Pattern()
+        subtitlepattern.pattern = xlwt.Pattern.SOLID_PATTERN
+        subtitlepattern.pattern_fore_colour = xlwt.Style.colour_map['aqua']#Search in Style.py for _colour_map_text
+
+        self.subtitle_style = xlwt.XFStyle() # Create Style 
+        self.subtitle_style.font = subtitlefont # Add Bold Font to Style 
+        self.subtitle_style.pattern = subtitlepattern
+        
+        #label font and style
+        labelfont = xlwt.Font() # Create Font 
+        labelfont.bold = True # Set font to Bold 
+        labelfont.name = 'Verdana'#'Times New Roman'
+        labelfont.height =  20 * 12 #12ptx
+
+        labelpattern = xlwt.Pattern()
+        labelpattern.pattern = xlwt.Pattern.SOLID_PATTERN
+        labelpattern.pattern_fore_colour = xlwt.Style.colour_map['sea_green']#Search in Style.py for _colour_map_text
+
+        self.label_style = xlwt.XFStyle() # Create Style 
+        self.label_style.font = labelfont # Add Bold Font to Style 
+        self.label_style.pattern = labelpattern        
+        
+        #normal data font and style
+        ndfont = xlwt.Font() # Create Font 
+        #ndfont.bold = True # Set font to Bold 
+        ndfont.name = 'Lucida Sans Typewriter'#'Times New Roman''Lucida Sans Typewriter'
+        ndfont.height =  20 * 12 #12ptx
+
+        ndpattern = xlwt.Pattern()
+        #ndpattern.pattern = xlwt.Pattern.SOLID_PATTERN
+        #ndpattern.pattern_fore_colour = xlwt.Style.colour_map['gray80']#Search in Style.py for _colour_map_text
+
+        self.nordata_style = xlwt.XFStyle() # Create Style 
+        self.nordata_style.font = ndfont # Add Bold Font to Style 
+        self.nordata_style.pattern = ndpattern
+        
+        #abnormal data font and style
+        adfont = xlwt.Font() # Create Font 
+        adfont.bold = True # Set font to Bold 
+        adfont.name = 'Lucida Sans Typewriter'#'Times New Roman'
+        adfont.height =  20 * 12 #12ptx
+
+        adpattern = xlwt.Pattern()
+        adpattern.pattern = xlwt.Pattern.SOLID_PATTERN
+        adpattern.pattern_fore_colour = xlwt.Style.colour_map['red']#Search in Style.py for _colour_map_text
+
+        self.abnordata_style = xlwt.XFStyle() # Create Style 
+        self.abnordata_style.font = adfont # Add Bold Font to Style 
+        self.abnordata_style.pattern = adpattern
+        
+    def get_data_style_for_xlwt_ex(self, tinput):
+        if(tinput == 1):
+            return self.nordata_style
+        else:
+            return self.abnordata_style
+        
+    def get_data_style_for_xlwt(self, tinput):
+        if(tinput == 0):
+            return self.nordata_style
+        else:
+            return self.abnordata_style        
+        
+    def get_chipid_style_for_xlwt(self, chipid):
+        if(chipid == self.a_null_chip_id):
+            return self.abnordata_style
+        else:
+            return self.nordata_style  
+        
+    def form_total_view_excel(self, workbook):
+        ttoffset = 0
+        worksheet = workbook.add_sheet('top view', cell_overwrite_ok=True)
+        worksheet.col(0).width =  256 * 26
+        worksheet.col(1).width =  256 * 50
+        
+        for i in range(2, 8):
+            worksheet.col(i).width =  256 * 15
+        
+        #set titles
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, '********The Total View Table For Check:********', self.title_style) 
+        ttoffset = ttoffset + 2
+        ttstr = "Total count theoretically: %d" %(len(self.totalView))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
+        
+        #set label
+        ttoffset = ttoffset + 1
+        tlabel = ['IMEI', 'Chip ID', 'have cal', 'DUAL DFT', 'QUAD DFT', 'Is bad?', 'chipid olp', 'imei olp']
+        for i in range(0,len(tlabel)):
+            worksheet.write(ttoffset, i, tlabel[i], self.label_style)
+
+        #set datas
+        ttoffset = ttoffset + 1
+        for i in range(0, len(self.totalView)):
+            cur = self.totalView[i]
+            #imei
+            worksheet.write(i+ttoffset, 0, cur[0], self.nordata_style)
+            #chip id
+            worksheet.write(i+ttoffset, 1, cur[1], self.get_chipid_style_for_xlwt(cur[1]))
+            #have cal
+            worksheet.write(i+ttoffset, 2, cur[2], self.get_data_style_for_xlwt_ex(cur[2]))
+            #is dual defualt
+            worksheet.write(i+ttoffset, 3, cur[3], self.get_data_style_for_xlwt(cur[3]))        
+            #is quad defualt
+            worksheet.write(i+ttoffset, 4, cur[4], self.get_data_style_for_xlwt(cur[4]))   
+            #is bad
+            worksheet.write(i+ttoffset, 5, cur[5], self.get_data_style_for_xlwt(cur[5]))
+            #chipid overlap
+            worksheet.write(i+ttoffset, 6, cur[6], self.get_data_style_for_xlwt(cur[6]))   
+            #imei overlap
+            worksheet.write(i+ttoffset, 7, cur[7], self.get_data_style_for_xlwt(cur[7]))   
+        ttoffset = ttoffset + len(self.totalView) + 2
+        
+        #abnormal data
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, '********The Total View Summary:********', self.title_style)
+        
+        ttoffset = ttoffset + 2
+        abnormal_pair,sub_abnormal_pair = self.hold_abnormal_pair_from()
+        
+        ttstr = "Total abnormal data: %d" %(len(abnormal_pair))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
+        
+        ttoffset = ttoffset + 1
+        for i in range(0,len(tlabel)):
+            worksheet.write(ttoffset, i, tlabel[i], self.label_style)
+        ttoffset = ttoffset + 1
+        for i in range(0, len(abnormal_pair)):
+            cur = abnormal_pair[i]
+            #imei
+            worksheet.write(i+ttoffset, 0, cur[0], self.nordata_style)
+            #chip id
+            worksheet.write(i+ttoffset, 1, cur[1], self.get_chipid_style_for_xlwt(cur[1]))
+            #have cal
+            worksheet.write(i+ttoffset, 2, cur[2], self.get_data_style_for_xlwt_ex(cur[2]))
+            #is dual defualt
+            worksheet.write(i+ttoffset, 3, cur[3], self.get_data_style_for_xlwt(cur[3]))        
+            #is quad defualt
+            worksheet.write(i+ttoffset, 4, cur[4], self.get_data_style_for_xlwt(cur[4]))   
+            #is bad
+            worksheet.write(i+ttoffset, 5, cur[5], self.get_data_style_for_xlwt(cur[5]))
+            #chipid overlap
+            worksheet.write(i+ttoffset, 6, cur[6], self.get_data_style_for_xlwt(cur[6]))   
+            #imei overlap
+            worksheet.write(i+ttoffset, 7, cur[7], self.get_data_style_for_xlwt(cur[7]))  
+        ttoffset = ttoffset + len(abnormal_pair) + 1
+        
+        #sub-abnormal data
+        ttstr = "Total sub-abnormal data: %d" %(len(sub_abnormal_pair))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
+        
+        ttoffset = ttoffset + 1
+        for i in range(0,len(tlabel)):
+            worksheet.write(ttoffset, i, tlabel[i], self.label_style)
+        ttoffset = ttoffset + 1            
+        for i in range(0, len(sub_abnormal_pair)):
+            cur = sub_abnormal_pair[i]
+            #imei
+            worksheet.write(i+ttoffset, 0, cur[0], self.nordata_style)
+            #chip id
+            worksheet.write(i+ttoffset, 1, cur[1], self.get_chipid_style_for_xlwt(cur[1]))
+            #have cal
+            worksheet.write(i+ttoffset, 2, cur[2], self.get_data_style_for_xlwt_ex(cur[2]))
+            #is dual defualt
+            worksheet.write(i+ttoffset, 3, cur[3], self.get_data_style_for_xlwt(cur[3]))        
+            #is quad defualt
+            worksheet.write(i+ttoffset, 4, cur[4], self.get_data_style_for_xlwt(cur[4]))   
+            #is bad
+            worksheet.write(i+ttoffset, 5, cur[5], self.get_data_style_for_xlwt(cur[5]))
+            #chipid overlap
+            worksheet.write(i+ttoffset, 6, cur[6], self.get_data_style_for_xlwt(cur[6]))   
+            #imei overlap
+            worksheet.write(i+ttoffset, 7, cur[7], self.get_data_style_for_xlwt(cur[7]))  
+        ttoffset = ttoffset + len(abnormal_pair) + 2        
+        #worksheet2 = workbook.add_sheet('EMPTY', cell_overwrite_ok=True) 
+    
+    def form_result_excel(self, workbook):
+        ttoffset = 0
+        worksheet = workbook.add_sheet('result', cell_overwrite_ok=True)
+        worksheet.col(0).width =  256 * 50
+        worksheet.col(1).width =  256 * 26
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, '*****Check calibration files consistency:*****', self.title_style)
+        ttoffset = ttoffset + 2
+        
+        allCalNumInCal = set(self.lallCalNumInCal)
+        allCalNumInINI = set(self.lallRidNumInINI)
+        
+        ttstr = "Total real cal folder number is: %d" %(len(list(allCalNumInCal)))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
+        ttoffset = ttoffset + 1
+        
+        ttstr = "Total cal serial number in INI is: %d" %(len(list(allCalNumInINI)))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)        
+        ttoffset = ttoffset + 1
+        
+        ###
+        mixCalNum = allCalNumInCal&allCalNumInINI
+        ttstr = "calibration numbers in ini but not in cal: %d" %(len(list(allCalNumInINI-mixCalNum)))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)        
+        ttoffset = ttoffset + 1        
+        
+        the_liter = 0
+        for tChipID in list(allCalNumInINI-mixCalNum):
+            worksheet.write(the_liter + ttoffset, 0, tChipID, self.nordata_style)
+            worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(tChipID), self.nordata_style)
+            the_liter = the_liter + 1
+        ttoffset = ttoffset + len(list(allCalNumInINI-mixCalNum)) + 2
+                        
+        ttstr = "calibration numbers in cal but not in ini: %d" %(len(list(allCalNumInCal-mixCalNum)))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)        
+        ttoffset = ttoffset + 1        
+        
+        the_liter = 0
+        for tChipID in list(allCalNumInCal-mixCalNum):
+            worksheet.write(the_liter + ttoffset, 0, tChipID, self.nordata_style)
+            #worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(tChipID), self.label_style)
+            the_liter = the_liter + 1
+        ttoffset = ttoffset + len(list(allCalNumInCal-mixCalNum)) + 2
+        
+        ###
+        countRange = 0
+        imei_range_head = int(self.imeihead.get())*10
+        imei_range_tail = int(self.imeitail.get())*10 + 9
+        lallCalNumInINI_set = set(self.lallCalNumInINI)
+                
+        the_liter = 0
+        for cnini in lallCalNumInINI_set:
+            reImeiNo = int(cnini[0:16])
+            if reImeiNo < imei_range_head or reImeiNo > imei_range_tail:
+                #outResultFileHandle.write("Out of range imei: %s\n" %(cnini))
+                worksheet.write(countRange + ttoffset, 0, cnini, self.nordata_style)
+                countRange += 1
+                
+        ttoffset = ttoffset + countRange 
+        ttstr = "totally %d items,and %d out of range." %(len(lallCalNumInINI_set), countRange)
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)        
+        ttoffset = ttoffset + 2
+        
+        ###
+        ttstr = "totally %d CAL data are DUAL DEFAULT CAL data:" %(len(self.lDUALDefaultCalByChipID))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)        
+        ttoffset = ttoffset + 1        
+        
+        for i in range(0, len(self.lDUALDefaultCalByChipID)):
+            chipid = self.lDUALDefaultCalByChipID[i]
+            worksheet.write(the_liter + ttoffset, 0, chipid, self.nordata_style)
+            worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(chipid), self.nordata_style)
+        ttoffset = ttoffset + len(self.lDUALDefaultCalByChipID) + 2
+
+        ###
+        ttstr = "totally %d CAL data are QUAD DEFAULT CAL data:" %(len(self.lQUADDefaultCalByChipID))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)        
+        ttoffset = ttoffset + 1        
+        
+        for i in range(0, len(self.lQUADDefaultCalByChipID)):
+            chipid = self.lQUADDefaultCalByChipID[i]
+            worksheet.write(the_liter + ttoffset, 0, chipid, self.nordata_style)
+            worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(chipid), self.nordata_style)
+        ttoffset = ttoffset + len(self.lQUADDefaultCalByChipID) + 2
+        
+        pass
+    
+    def form_band_confirm_excel(self, workbook):
+        ttoffset = 0
+        worksheet = workbook.add_sheet('bd_cfm', cell_overwrite_ok=True)
+        
+        worksheet.col(0).width =  256 * 10
+        worksheet.col(1).width =  256 * 50
+        worksheet.col(2).width =  256 * 26
+        worksheet.write_merge(ttoffset, ttoffset, 0, 2, '*******Band Confirm table:*******', self.title_style)
+        ttoffset = ttoffset + 2
+        
+        worksheet.write_merge(ttoffset, ttoffset, 0, 2, 'The list below is Band support with DUAL', self.subtitle_style)
+        ttoffset = ttoffset +1
+        for i in range(0, len(self.lIsDUALCalByChipID)):
+            tchipID = self.lIsDUALCalByChipID[i]
+            worksheet.write(i + ttoffset, 0, 'DUAL', self.nordata_style)
+            worksheet.write(i + ttoffset, 1, tchipID, self.nordata_style)
+            worksheet.write(i + ttoffset, 2, self.get_imei_by_chipid(tchipID), self.nordata_style)
+        ttoffset = ttoffset + len(self.lIsDUALCalByChipID) + 2
+        
+        worksheet.write_merge(ttoffset, ttoffset, 0, 2, 'The list below is Band support with QUAD', self.subtitle_style)
+        ttoffset = ttoffset +1
+        for i in range(0, len(self.lIsQUADCalByChipID)):
+            tchipID = self.lIsQUADCalByChipID[i]
+            worksheet.write(i + ttoffset, 0, 'QUAL', self.nordata_style)
+            worksheet.write(i + ttoffset, 1, tchipID, self.nordata_style)
+            worksheet.write(i + ttoffset, 2, self.get_imei_by_chipid(tchipID), self.nordata_style)
+        ttoffset = ttoffset + len(self.lIsQUADCalByChipID) + 2
+        
+        worksheet.write_merge(ttoffset, ttoffset, 0, 2, 'The list below is Band support with NONE(error with CAL)', self.subtitle_style)
+        ttoffset = ttoffset +1
+        for i in range(0, len(self.lIsNULLBandCalByChipID)):
+            tchipID = self.lIsNULLBandCalByChipID[i]
+            worksheet.write(i + ttoffset, 0, 'NULL', self.nordata_style)
+            worksheet.write(i + ttoffset, 1, tchipID, self.nordata_style)
+            worksheet.write(i + ttoffset, 2, self.get_imei_by_chipid(tchipID), self.nordata_style)
+        ttoffset = ttoffset + len(self.lIsNULLBandCalByChipID) + 2        
+        
+        pass
+    
+    def form_comparison_excel(self, workbook):
+        ttoffset = 0
+        worksheet = workbook.add_sheet('cpsn', cell_overwrite_ok=True)
+        
+        worksheet.col(0).width =  256 * 26
+        worksheet.col(1).width =  256 * 50
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, '****The Comparison Table For IMEI and ChipID****', self.title_style)
+        ttoffset = ttoffset + 2        
+        
+        for i in range(0, len(self.IMEIAndChipIDPair)):
+            tPair0 = self.IMEIAndChipIDPair[i][0]
+            tPair1 = self.IMEIAndChipIDPair[i][1]
+            worksheet.write(i + ttoffset, 0, tPair0, self.nordata_style)
+            worksheet.write(i + ttoffset, 1, tPair1, self.nordata_style)
+        ttoffset = ttoffset + len(self.IMEIAndChipIDPair) + 2
+        
+        pass
+                   
     def __init__(self, master=None):
         
         self.IMEIAndChipIDPair = []
@@ -544,6 +901,9 @@ class Application(Frame):
         self.pack()
         self.createWidgets()
         
+        self.init_font_style()
+        
+        
 if __name__=="__main__":
     root = Tk()
     
@@ -553,6 +913,4 @@ if __name__=="__main__":
     
     app = Application(master=root)
     app.mainloop()
-
-
 
