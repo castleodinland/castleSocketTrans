@@ -524,6 +524,15 @@ class Application(Frame):
             return False
 
     def init_font_style(self):
+        
+        #add border
+        borders = xlwt.Borders()
+        borders.left = 1
+        borders.right = 1
+        borders.top = 1
+        borders.bottom = 1
+        borders.bottom_colour = 0x3A    
+        
         #title font and style
         titlefont = xlwt.Font() # Create Font 
         titlefont.bold = True # Set font to Bold 
@@ -537,6 +546,7 @@ class Application(Frame):
         self.title_style = xlwt.XFStyle() # Create Style 
         self.title_style.font = titlefont # Add Bold Font to Style 
         self.title_style.pattern = titlepattern
+        self.title_style.borders = borders 
 
         #sub title font and style
         subtitlefont = xlwt.Font() # Create Font 
@@ -551,6 +561,7 @@ class Application(Frame):
         self.subtitle_style = xlwt.XFStyle() # Create Style 
         self.subtitle_style.font = subtitlefont # Add Bold Font to Style 
         self.subtitle_style.pattern = subtitlepattern
+        self.subtitle_style.borders = borders 
         
         #label font and style
         labelfont = xlwt.Font() # Create Font 
@@ -560,11 +571,12 @@ class Application(Frame):
 
         labelpattern = xlwt.Pattern()
         labelpattern.pattern = xlwt.Pattern.SOLID_PATTERN
-        labelpattern.pattern_fore_colour = xlwt.Style.colour_map['sea_green']#Search in Style.py for _colour_map_text
+        labelpattern.pattern_fore_colour = xlwt.Style.colour_map['gray25']#Search in Style.py for _colour_map_text
 
         self.label_style = xlwt.XFStyle() # Create Style 
         self.label_style.font = labelfont # Add Bold Font to Style 
         self.label_style.pattern = labelpattern        
+        self.label_style.borders = borders 
         
         #normal data font and style
         ndfont = xlwt.Font() # Create Font 
@@ -579,6 +591,7 @@ class Application(Frame):
         self.nordata_style = xlwt.XFStyle() # Create Style 
         self.nordata_style.font = ndfont # Add Bold Font to Style 
         self.nordata_style.pattern = ndpattern
+        self.nordata_style.borders = borders 
         
         #abnormal data font and style
         adfont = xlwt.Font() # Create Font 
@@ -593,6 +606,7 @@ class Application(Frame):
         self.abnordata_style = xlwt.XFStyle() # Create Style 
         self.abnordata_style.font = adfont # Add Bold Font to Style 
         self.abnordata_style.pattern = adpattern
+        self.abnordata_style.borders = borders 
         
     def get_data_style_for_xlwt_ex(self, tinput):
         if(tinput == 1):
@@ -621,6 +635,10 @@ class Application(Frame):
         for i in range(2, 8):
             worksheet.col(i).width =  256 * 15
         
+        worksheet.panes_frozen = True
+        worksheet.remove_splits = True
+        worksheet.horz_split_pos = 4
+        
         #set titles
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, '********The Total View Table For Check:********', self.title_style) 
         ttoffset = ttoffset + 2
@@ -630,8 +648,9 @@ class Application(Frame):
         #set label
         ttoffset = ttoffset + 1
         tlabel = ['IMEI', 'Chip ID', 'have cal', 'DUAL DFT', 'QUAD DFT', 'Is bad?', 'chipid olp', 'imei olp']
-        for i in range(0,len(tlabel)):
-            worksheet.write(ttoffset, i, tlabel[i], self.label_style)
+        for i, e in zip(range(len(tlabel)), tlabel):
+        #for i in range(0,len(tlabel)):
+            worksheet.write(ttoffset, i, e, self.label_style)
 
         #set datas
         ttoffset = ttoffset + 1
@@ -665,9 +684,7 @@ class Application(Frame):
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
         
         ttoffset = ttoffset + 1
-        for i in range(0,len(tlabel)):
-            worksheet.write(ttoffset, i, tlabel[i], self.label_style)
-        ttoffset = ttoffset + 1
+
         for i in range(0, len(abnormal_pair)):
             cur = abnormal_pair[i]
             #imei
@@ -691,11 +708,8 @@ class Application(Frame):
         #sub-abnormal data
         ttstr = "Total sub-abnormal data: %d" %(len(sub_abnormal_pair))
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
-        
         ttoffset = ttoffset + 1
-        for i in range(0,len(tlabel)):
-            worksheet.write(ttoffset, i, tlabel[i], self.label_style)
-        ttoffset = ttoffset + 1            
+       
         for i in range(0, len(sub_abnormal_pair)):
             cur = sub_abnormal_pair[i]
             #imei
@@ -743,6 +757,7 @@ class Application(Frame):
         ttoffset = ttoffset + 1        
         
         the_liter = 0
+        #for i, e in zip(range(len(list(allCalNumInINI-mixCalNum))), list(allCalNumInINI-mixCalNum)):
         for tChipID in list(allCalNumInINI-mixCalNum):
             worksheet.write(the_liter + ttoffset, 0, tChipID, self.nordata_style)
             worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(tChipID), self.nordata_style)
