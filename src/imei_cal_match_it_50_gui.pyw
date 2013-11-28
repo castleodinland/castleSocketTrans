@@ -17,6 +17,8 @@ import xlwt
 
 the_first_lay_dir = False
 
+IS_FOR_CASTLE_TST = True #False True
+
 #release note:
 #v1.1101Beta -->fix bug when checking band support
 #v1.1105Beta -->add a new Entry to appoint Cal PATH
@@ -235,82 +237,6 @@ class Application(Frame):
             iniFileHandle.close()
             readState = 0
     
-        #for tPair in IMEIAndChipIDPair:
-        #    print tPair[0]+"=====>"+tPair[1]+"\n"
-    
-        #self.pbar.config(value=90)
-    
-        outResultFileHandle = open("result.txt",'w+')
-        
-        """
-        check *.cal files imei inside and outside
-        """
-        outResultFileHandle.write("Check calibration files consistency\n")
-    
-        """
-        save the two lists in set and get the intersection 
-        """        
-        allCalNumInCal = set(self.lallCalNumInCal)
-        allCalNumInINI = set(self.lallRidNumInINI)
-        
-        outResultFileHandle.write("\nTotal real cal folder number is: %d\n" %(len(list(allCalNumInCal))))
-        outResultFileHandle.write("\nTotal cal serial number in INI is: %d\n" %(len(list(allCalNumInINI))))
-        
-        mixCalNum = allCalNumInCal&allCalNumInINI
-        #print list(mixCalNum)
-        
-        outResultFileHandle.write("\ncalibration numbers in ini but not in cal:\n")
-        #outResultFileHandle.write("\n".join(list(allCalNumInINI-mixCalNum)))
-        for tChipID in list(allCalNumInINI-mixCalNum):
-            outResultFileHandle.write("%s--->%s\n" %(tChipID, self.get_imei_by_chipid(tChipID)))
-            
-        outResultFileHandle.write("\ntotally %d items found!\n" %(len(list(allCalNumInINI-mixCalNum))))
-        outResultFileHandle.write("=============================================================================================================\n\n")
-        
-        outResultFileHandle.write("\ncalibration numbers in cal but not in ini:\n")
-        outResultFileHandle.write("\n".join(list(allCalNumInCal-mixCalNum)))
-        outResultFileHandle.write("\ntotally %d items found!\n" %(len(list(allCalNumInCal-mixCalNum))))
-        
-        outResultFileHandle.write("=============================================================================================================\n\n")
-        
-        countRange = 0
-        
-        
-        #for cnini in lallCalNumInINI:
-        #    reImeiNo = int(cnini[0:16])
-        #    if reImeiNo < imei_range_head or reImeiNo > imei_range_tail:
-        #        outResultFileHandle.write("Out of range imei: %s\n" %(cnini))
-        #        countRange += 1
-        
-        lallCalNumInINI_set = set(self.lallCalNumInINI)
-        for cnini in lallCalNumInINI_set:
-            reImeiNo = int(cnini[0:16])
-            if reImeiNo < imei_range_head or reImeiNo > imei_range_tail:
-                outResultFileHandle.write("Out of range imei: %s\n" %(cnini))
-                countRange += 1
-        
-        outResultFileHandle.write("\ntotally %d items,and %d out of range.\n" %(len(lallCalNumInINI_set), countRange))
-        outResultFileHandle.write("=============================================================================================================\n\n")
-        
-        outResultFileHandle.write("\ntotally %d CAL data are DUAL DEFAULT CAL data:\n" %(len(self.lDUALDefaultCalByChipID)))
-        #outResultFileHandle.write("\n".join(lDUALDefaultCalByChipID))
-        for chipid in self.lDUALDefaultCalByChipID:
-            outResultFileHandle.write("%s----->%s\n" %(chipid, self.get_imei_by_chipid(chipid)))
-        
-        outResultFileHandle.write("\n=============================================================================================================\n\n")
-        
-        outResultFileHandle.write("\ntotally %d CAL data are QUAD DEFAULT CAL data:\n" %(len(self.lQUADDefaultCalByChipID)))
-        #outResultFileHandle.write("\n".join(lQUADDefaultCalByChipID))
-        for chipid in self.lQUADDefaultCalByChipID:
-            outResultFileHandle.write("%s----->%s\n" %(chipid, self.get_imei_by_chipid(chipid)))
-        outResultFileHandle.write("\n=============================================================================================================\n\n")
-        
-        outResultFileHandle.write("END\n\n\n")    
-        
-        print("Done!\n")
-        
-        outResultFileHandle.close()#close result.txt
-        
         #Comparison Table, now is the total view
         #total view: <imei><chip id><is cal exist><DUAL is defult><QUAD is defult><cal is bad>[be chipid overlap][imei overlap]
         #init total view:
@@ -325,13 +251,10 @@ class Application(Frame):
             #check over-lapped imei:
             if(tpair[1] != self.a_null_chip_id):
                 temp_imei = self.get_imei_by_chipid(tpair[1])
-                
                 if(str(tpair[0]) == temp_imei[0:14]):
                     pass  
                 else:#may use a used chip id
                     tpair[6] = tpair[6] + 1
-            else:
-                pass
 
             temp_imei = self.get_full_imei_by_imei(str(tpair[0]))
             if(len(temp_imei) != 0):
@@ -354,69 +277,11 @@ class Application(Frame):
             set_for_same_imei_pair = set(same_imei_pair)
             if(len(set_for_same_imei_pair) > 1):
                 tpair[7] = len(set_for_same_imei_pair)
-                
-            #print "SAME IMEI : %d" %(len(set_for_same_imei_pair))
-            #print same_imei_pair
-        abnormal_pair,sub_abnormal_pair = self.hold_abnormal_pair_from()
-        
-        outResultFileHandle = open("TotalView.txt",'w+')
-        outResultFileHandle.write("********The Total View Table For Check:********\n\n")
-        outResultFileHandle.write("Total count theoretically: %d\n\n" %(len(self.totalView)))
-        outResultFileHandle.write("[IMEI]--->[Chip ID]--->([have cal] [is dual defualt][is quad defualt] [is bad])=([chipid overlap]=[imei overlap])\n")
-        for tpair in self.totalView:
-            outResultFileHandle.write("%s--->%s--->(%d=====%d=====%d=====%d)=====(%d=====%d)\n" %(tpair[0], tpair[1], tpair[2], tpair[3], tpair[4], tpair[5], tpair[6], tpair[7]))
-        
-        outResultFileHandle.write("\n\n********The Total View Summary:********\n\n")
-        outResultFileHandle.write("Total abnormal data: %d\n\n" %(len(abnormal_pair)))
-        for tpair in abnormal_pair:
-            outResultFileHandle.write("%s--->%s--->(%d=====%d=====%d=====%d)=====(%d=====%d)\n" %(tpair[0], tpair[1], tpair[2], tpair[3], tpair[4], tpair[5], tpair[6], tpair[7]))
-        
-        outResultFileHandle.write("\n\nTotal sub-abnormal data: %d\n\n" %(len(sub_abnormal_pair)))
-        for tpair in sub_abnormal_pair:
-            outResultFileHandle.write("%s--->%s--->(%d=====%d=====%d=====%d)=====(%d=====%d)\n" %(tpair[0], tpair[1], tpair[2], tpair[3], tpair[4], tpair[5], tpair[6], tpair[7]))
-        
-        outResultFileHandle.close()
-        
-        #==============================================================================#
-        outResultFileHandle = open("ComparisonTable.txt",'w+')
-        outResultFileHandle.write("The Comparison Table For IMEI and ChipID:\n\n")
-        
-        for tPair in self.IMEIAndChipIDPair:
-            #print tPair[0]+"=====>"+tPair[1]+"\n"
-            outResultFileHandle.write("%s======>%s\n" %(tPair[0], tPair[1]))
-        
-        outResultFileHandle.close()#close ComparisonTable.txt
-        #==============================================================================#
-
-        #Band Confirm table
-        outResultFileHandle = open("BandConfirm.txt",'w+') 
-        outResultFileHandle.write("Band Confirm table:\n\n")
-        outResultFileHandle.write("\n=============================================================================================================\n\n")
-        outResultFileHandle.write("The list below is Band support with DUAL\n")
-        for tChipID in self.lIsDUALCalByChipID:
-            outResultFileHandle.write("DUAL====>%s--->%s\n" %(tChipID, self.get_imei_by_chipid(tChipID)))
-        outResultFileHandle.write("\n=============================================================================================================\n\n")        
-        outResultFileHandle.write("The list below is Band support with QUAD\n")
-        for tChipID in self.lIsQUADCalByChipID:
-            outResultFileHandle.write("QUAD====>%s--->%s\n" %(tChipID, self.get_imei_by_chipid(tChipID)))
-        outResultFileHandle.write("\n=============================================================================================================\n\n")
-        outResultFileHandle.write("The list below is Band support with NONE(error with CAL)\n")
-        for tChipID in self.lIsNULLBandCalByChipID:
-            outResultFileHandle.write("NULL====>%s--->%s\n" %(tChipID, self.get_imei_by_chipid(tChipID)))
-    
-        outResultFileHandle.write("\n=============================================================================================================\n\n")
-        outResultFileHandle.write("END")
-        outResultFileHandle.close()#close BandConfirm.txt
-        
-        #delete txt that we use excel now
-        os.remove("ComparisonTable.txt")
-        os.remove("BandConfirm.txt")
-        os.remove("result.txt")
-        os.remove("TotalView.txt")
         
         #excel:::
         workbook = xlwt.Workbook()
-        self.form_total_view_excel(workbook)
+        if (self.checkv.get() != 1):
+            self.form_total_view_excel(workbook)
         self.form_result_excel(workbook)
         self.form_band_confirm_excel(workbook)
         self.form_comparison_excel(workbook)
@@ -440,8 +305,12 @@ class Application(Frame):
         print("Well done, continue...", self.contents.get())
         self.lb_title["text"] = "Well done, continue..." + self.contents.get()
         
-    def createWidgets(self):
+    def callCheckbutton(self):    
+        print("callCheckbutton")
+        print self.checkv.get()
         
+    def createWidgets(self):
+        global IS_FOR_CASTLE_TST
         self.lb_title = Label(root,text = self.version_info)
         self.lb_title.pack({"side": "top"})
         
@@ -452,8 +321,10 @@ class Application(Frame):
         # here is the application variable
         self.contents = StringVar()
         # set it to some value
-        self.contents.set("input work space path here...")
-        #self.contents.set("1307004-1008-t")
+        if(IS_FOR_CASTLE_TST != True):
+            self.contents.set("input work space path here...")
+        else:
+            self.contents.set("1307004-1008-t")
         # tell the entry widget to watch this variable
         self.entrythingy["textvariable"] = self.contents
 
@@ -482,8 +353,10 @@ class Application(Frame):
         # here is the application variable
         self.contentshead = StringVar()
         # set it to some value
-        self.contentshead.set("00000000000000")
-        #self.contentshead.set("35909402000003")
+        if(IS_FOR_CASTLE_TST != True):
+            self.contentshead.set("00000000000000")
+        else:
+            self.contentshead.set("35909402000003")
         self.imeihead["textvariable"] = self.contentshead
         
         #tail
@@ -493,23 +366,29 @@ class Application(Frame):
         # here is the application variable
         self.contentstail = StringVar()
         # set it to some value
-        self.contentstail.set("00000000000008")
-        #self.contentstail.set("35909402000008")
+        if(IS_FOR_CASTLE_TST != True):
+            self.contentstail.set("00000000000008")
+        else:
+            self.contentstail.set("35909402000008")
         self.imeitail["textvariable"] = self.contentstail
         
-        self.QUIT = Button(self, relief=RAISED, width = 15)
-        self.QUIT["text"] = "QUIT"
-        self.QUIT["fg"] = "red"
-        self.QUIT["command"] = self.quit
-
-        self.QUIT.pack({"side": "right"})
-
         self.hi_there = Button(self, relief=RAISED, width = 15)
         self.hi_there["text"] = "RUN",
         self.hi_there["fg"] = "blue"
         self.hi_there["command"] = self.say_hi
         
         self.hi_there.pack({"side": "left"})
+        
+        self.QUIT = Button(self, relief=RAISED, width = 15)
+        self.QUIT["text"] = "QUIT"
+        self.QUIT["fg"] = "red"
+        self.QUIT["command"] = self.quit
+
+        self.QUIT.pack({"side": "left"})
+
+        self.checkv = IntVar()
+        self._checkbutton = Checkbutton(self, variable = self.checkv, text = "scatter", command = self.callCheckbutton)
+        self._checkbutton.pack({"side": "right"})
 
         self.pbar = ttk.Progressbar(root, length=284, maximum=120)
         self.pbar.pack()
@@ -582,7 +461,7 @@ class Application(Frame):
         ndfont = xlwt.Font() # Create Font 
         #ndfont.bold = True # Set font to Bold 
         ndfont.name = 'Lucida Sans Typewriter'#'Times New Roman''Lucida Sans Typewriter'
-        ndfont.height =  20 * 12 #12ptx
+        ndfont.height =  20 * 13 #12ptx
 
         ndpattern = xlwt.Pattern()
         #ndpattern.pattern = xlwt.Pattern.SOLID_PATTERN
@@ -597,7 +476,7 @@ class Application(Frame):
         adfont = xlwt.Font() # Create Font 
         adfont.bold = True # Set font to Bold 
         adfont.name = 'Lucida Sans Typewriter'#'Times New Roman'
-        adfont.height =  20 * 12 #12ptx
+        adfont.height =  20 * 13 #12ptx
 
         adpattern = xlwt.Pattern()
         adpattern.pattern = xlwt.Pattern.SOLID_PATTERN
@@ -654,24 +533,23 @@ class Application(Frame):
 
         #set datas
         ttoffset = ttoffset + 1
-        for i in range(0, len(self.totalView)):
-            cur = self.totalView[i]
+        for i, e in zip(range(len(self.totalView)), self.totalView):
             #imei
-            worksheet.write(i+ttoffset, 0, cur[0], self.nordata_style)
+            worksheet.write(i+ttoffset, 0, e[0], self.nordata_style)
             #chip id
-            worksheet.write(i+ttoffset, 1, cur[1], self.get_chipid_style_for_xlwt(cur[1]))
+            worksheet.write(i+ttoffset, 1, e[1], self.get_chipid_style_for_xlwt(e[1]))
             #have cal
-            worksheet.write(i+ttoffset, 2, cur[2], self.get_data_style_for_xlwt_ex(cur[2]))
+            worksheet.write(i+ttoffset, 2, e[2], self.get_data_style_for_xlwt_ex(e[2]))
             #is dual defualt
-            worksheet.write(i+ttoffset, 3, cur[3], self.get_data_style_for_xlwt(cur[3]))        
+            worksheet.write(i+ttoffset, 3, e[3], self.get_data_style_for_xlwt(e[3]))        
             #is quad defualt
-            worksheet.write(i+ttoffset, 4, cur[4], self.get_data_style_for_xlwt(cur[4]))   
+            worksheet.write(i+ttoffset, 4, e[4], self.get_data_style_for_xlwt(e[4]))   
             #is bad
-            worksheet.write(i+ttoffset, 5, cur[5], self.get_data_style_for_xlwt(cur[5]))
+            worksheet.write(i+ttoffset, 5, e[5], self.get_data_style_for_xlwt(e[5]))
             #chipid overlap
-            worksheet.write(i+ttoffset, 6, cur[6], self.get_data_style_for_xlwt(cur[6]))   
+            worksheet.write(i+ttoffset, 6, e[6], self.get_data_style_for_xlwt(e[6]))   
             #imei overlap
-            worksheet.write(i+ttoffset, 7, cur[7], self.get_data_style_for_xlwt(cur[7]))   
+            worksheet.write(i+ttoffset, 7, e[7], self.get_data_style_for_xlwt(e[7]))   
         ttoffset = ttoffset + len(self.totalView) + 2
         
         #abnormal data
@@ -685,24 +563,23 @@ class Application(Frame):
         
         ttoffset = ttoffset + 1
 
-        for i in range(0, len(abnormal_pair)):
-            cur = abnormal_pair[i]
+        for i, e in zip(range(len(abnormal_pair)), abnormal_pair):
             #imei
-            worksheet.write(i+ttoffset, 0, cur[0], self.nordata_style)
+            worksheet.write(i+ttoffset, 0, e[0], self.nordata_style)
             #chip id
-            worksheet.write(i+ttoffset, 1, cur[1], self.get_chipid_style_for_xlwt(cur[1]))
+            worksheet.write(i+ttoffset, 1, e[1], self.get_chipid_style_for_xlwt(e[1]))
             #have cal
-            worksheet.write(i+ttoffset, 2, cur[2], self.get_data_style_for_xlwt_ex(cur[2]))
+            worksheet.write(i+ttoffset, 2, e[2], self.get_data_style_for_xlwt_ex(e[2]))
             #is dual defualt
-            worksheet.write(i+ttoffset, 3, cur[3], self.get_data_style_for_xlwt(cur[3]))        
+            worksheet.write(i+ttoffset, 3, e[3], self.get_data_style_for_xlwt(e[3]))        
             #is quad defualt
-            worksheet.write(i+ttoffset, 4, cur[4], self.get_data_style_for_xlwt(cur[4]))   
+            worksheet.write(i+ttoffset, 4, e[4], self.get_data_style_for_xlwt(e[4]))   
             #is bad
-            worksheet.write(i+ttoffset, 5, cur[5], self.get_data_style_for_xlwt(cur[5]))
+            worksheet.write(i+ttoffset, 5, e[5], self.get_data_style_for_xlwt(e[5]))
             #chipid overlap
-            worksheet.write(i+ttoffset, 6, cur[6], self.get_data_style_for_xlwt(cur[6]))   
+            worksheet.write(i+ttoffset, 6, e[6], self.get_data_style_for_xlwt(e[6]))   
             #imei overlap
-            worksheet.write(i+ttoffset, 7, cur[7], self.get_data_style_for_xlwt(cur[7]))  
+            worksheet.write(i+ttoffset, 7, e[7], self.get_data_style_for_xlwt(e[7]))  
         ttoffset = ttoffset + len(abnormal_pair) + 1
         
         #sub-abnormal data
@@ -710,24 +587,23 @@ class Application(Frame):
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
         ttoffset = ttoffset + 1
        
-        for i in range(0, len(sub_abnormal_pair)):
-            cur = sub_abnormal_pair[i]
+        for i, e in zip(range(len(sub_abnormal_pair)), sub_abnormal_pair):
             #imei
-            worksheet.write(i+ttoffset, 0, cur[0], self.nordata_style)
+            worksheet.write(i+ttoffset, 0, e[0], self.nordata_style)
             #chip id
-            worksheet.write(i+ttoffset, 1, cur[1], self.get_chipid_style_for_xlwt(cur[1]))
+            worksheet.write(i+ttoffset, 1, e[1], self.get_chipid_style_for_xlwt(e[1]))
             #have cal
-            worksheet.write(i+ttoffset, 2, cur[2], self.get_data_style_for_xlwt_ex(cur[2]))
+            worksheet.write(i+ttoffset, 2, e[2], self.get_data_style_for_xlwt_ex(e[2]))
             #is dual defualt
-            worksheet.write(i+ttoffset, 3, cur[3], self.get_data_style_for_xlwt(cur[3]))        
+            worksheet.write(i+ttoffset, 3, e[3], self.get_data_style_for_xlwt(e[3]))        
             #is quad defualt
-            worksheet.write(i+ttoffset, 4, cur[4], self.get_data_style_for_xlwt(cur[4]))   
+            worksheet.write(i+ttoffset, 4, e[4], self.get_data_style_for_xlwt(e[4]))   
             #is bad
-            worksheet.write(i+ttoffset, 5, cur[5], self.get_data_style_for_xlwt(cur[5]))
+            worksheet.write(i+ttoffset, 5, e[5], self.get_data_style_for_xlwt(e[5]))
             #chipid overlap
-            worksheet.write(i+ttoffset, 6, cur[6], self.get_data_style_for_xlwt(cur[6]))   
+            worksheet.write(i+ttoffset, 6, e[6], self.get_data_style_for_xlwt(e[6]))   
             #imei overlap
-            worksheet.write(i+ttoffset, 7, cur[7], self.get_data_style_for_xlwt(cur[7]))  
+            worksheet.write(i+ttoffset, 7, e[7], self.get_data_style_for_xlwt(e[7]))  
         ttoffset = ttoffset + len(abnormal_pair) + 2        
         #worksheet2 = workbook.add_sheet('EMPTY', cell_overwrite_ok=True) 
     
@@ -798,22 +674,19 @@ class Application(Frame):
         ttstr = "totally %d CAL data are DUAL DEFAULT CAL data:" %(len(self.lDUALDefaultCalByChipID))
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)        
         ttoffset = ttoffset + 1        
-        
-        for i in range(0, len(self.lDUALDefaultCalByChipID)):
-            chipid = self.lDUALDefaultCalByChipID[i]
-            worksheet.write(the_liter + ttoffset, 0, chipid, self.nordata_style)
-            worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(chipid), self.nordata_style)
+    
+        for i, e in zip(range(len(self.lDUALDefaultCalByChipID)), self.lDUALDefaultCalByChipID):
+            worksheet.write(the_liter + ttoffset, 0, e, self.nordata_style)
+            worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(e), self.nordata_style)
         ttoffset = ttoffset + len(self.lDUALDefaultCalByChipID) + 2
 
         ###
         ttstr = "totally %d CAL data are QUAD DEFAULT CAL data:" %(len(self.lQUADDefaultCalByChipID))
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)        
         ttoffset = ttoffset + 1        
-        
-        for i in range(0, len(self.lQUADDefaultCalByChipID)):
-            chipid = self.lQUADDefaultCalByChipID[i]
-            worksheet.write(the_liter + ttoffset, 0, chipid, self.nordata_style)
-            worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(chipid), self.nordata_style)
+        for i, e in zip(range(len(self.lQUADDefaultCalByChipID)), self.lQUADDefaultCalByChipID):
+            worksheet.write(the_liter + ttoffset, 0, e, self.nordata_style)
+            worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(e), self.nordata_style)
         ttoffset = ttoffset + len(self.lQUADDefaultCalByChipID) + 2
         
         pass
@@ -830,29 +703,26 @@ class Application(Frame):
         
         worksheet.write_merge(ttoffset, ttoffset, 0, 2, 'The list below is Band support with DUAL', self.subtitle_style)
         ttoffset = ttoffset +1
-        for i in range(0, len(self.lIsDUALCalByChipID)):
-            tchipID = self.lIsDUALCalByChipID[i]
+        for i, e in zip(range(len(self.lIsDUALCalByChipID)), self.lIsDUALCalByChipID):
             worksheet.write(i + ttoffset, 0, 'DUAL', self.nordata_style)
-            worksheet.write(i + ttoffset, 1, tchipID, self.nordata_style)
-            worksheet.write(i + ttoffset, 2, self.get_imei_by_chipid(tchipID), self.nordata_style)
+            worksheet.write(i + ttoffset, 1, e, self.nordata_style)
+            worksheet.write(i + ttoffset, 2, self.get_imei_by_chipid(e), self.nordata_style)
         ttoffset = ttoffset + len(self.lIsDUALCalByChipID) + 2
         
         worksheet.write_merge(ttoffset, ttoffset, 0, 2, 'The list below is Band support with QUAD', self.subtitle_style)
         ttoffset = ttoffset +1
-        for i in range(0, len(self.lIsQUADCalByChipID)):
-            tchipID = self.lIsQUADCalByChipID[i]
+        for i, e in zip(range(len(self.lIsQUADCalByChipID)), self.lIsQUADCalByChipID):
             worksheet.write(i + ttoffset, 0, 'QUAL', self.nordata_style)
-            worksheet.write(i + ttoffset, 1, tchipID, self.nordata_style)
-            worksheet.write(i + ttoffset, 2, self.get_imei_by_chipid(tchipID), self.nordata_style)
+            worksheet.write(i + ttoffset, 1, e, self.nordata_style)
+            worksheet.write(i + ttoffset, 2, self.get_imei_by_chipid(e), self.nordata_style)
         ttoffset = ttoffset + len(self.lIsQUADCalByChipID) + 2
         
         worksheet.write_merge(ttoffset, ttoffset, 0, 2, 'The list below is Band support with NONE(error with CAL)', self.subtitle_style)
         ttoffset = ttoffset +1
-        for i in range(0, len(self.lIsNULLBandCalByChipID)):
-            tchipID = self.lIsNULLBandCalByChipID[i]
+        for i, e in zip(range(len(self.lIsNULLBandCalByChipID)), self.lIsNULLBandCalByChipID):
             worksheet.write(i + ttoffset, 0, 'NULL', self.nordata_style)
-            worksheet.write(i + ttoffset, 1, tchipID, self.nordata_style)
-            worksheet.write(i + ttoffset, 2, self.get_imei_by_chipid(tchipID), self.nordata_style)
+            worksheet.write(i + ttoffset, 1, e, self.nordata_style)
+            worksheet.write(i + ttoffset, 2, self.get_imei_by_chipid(e), self.nordata_style)
         ttoffset = ttoffset + len(self.lIsNULLBandCalByChipID) + 2        
         
         pass
@@ -866,11 +736,9 @@ class Application(Frame):
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, '****The Comparison Table For IMEI and ChipID****', self.title_style)
         ttoffset = ttoffset + 2        
         
-        for i in range(0, len(self.IMEIAndChipIDPair)):
-            tPair0 = self.IMEIAndChipIDPair[i][0]
-            tPair1 = self.IMEIAndChipIDPair[i][1]
-            worksheet.write(i + ttoffset, 0, tPair0, self.nordata_style)
-            worksheet.write(i + ttoffset, 1, tPair1, self.nordata_style)
+        for i, e in zip(range(len(self.IMEIAndChipIDPair)), self.IMEIAndChipIDPair):
+            worksheet.write(i + ttoffset, 0, e[0], self.nordata_style)
+            worksheet.write(i + ttoffset, 1, e[1], self.nordata_style)
         ttoffset = ttoffset + len(self.IMEIAndChipIDPair) + 2
         
         pass
@@ -907,7 +775,7 @@ class Application(Frame):
         
         self.totalView = []
         
-        self.version_info = "imei_cal_match_it version v1.1119Beta"
+        self.version_info = "imei_cal_match_it version v1.1121Beta"
         self.a_null_chip_id = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
         
         self.overlaped_imei = [] #different imei use same chipid with cal
