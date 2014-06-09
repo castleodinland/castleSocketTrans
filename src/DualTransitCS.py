@@ -48,9 +48,10 @@ class DualTransitCS(object):
                 else:
                     if not data: break
                     #Get real data here
-                    print ("[Server:]Get data len=%d" %(len(data)))
+                    print ("[Server:]Get data length =%d" %(len(data)))
                                         
                     try:
+                        #broadcast to all client side
                         for ttsoc in self.socketArry:
                             ttsoc.send(data)
                     except:
@@ -66,7 +67,7 @@ class DualTransitCS(object):
         """
         serversock = socket(AF_INET, SOCK_STREAM)
         serversock.bind(self.clientSideAdd)
-        serversock.listen(7)
+        serversock.listen(20)
         print("[Client:]Waiting for connecting with port = %d...\n" % (self.client_side_lisPort))
         
         while True:

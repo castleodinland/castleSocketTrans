@@ -233,6 +233,8 @@ src/1310005-1008-1234/*
 src/1310016-2007/*
 src/build/*
 src/dist/*
+src/cal_3g/*
+src/tst_null_folder/*
 
 #make exe build
 src/PyInstaller-2.1/imei_cal_match_it_50_gui/*

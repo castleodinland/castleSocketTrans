@@ -25,7 +25,7 @@ IS_FOR_CASTLE_TST = True #False True
 #v1.1111Beta -->add a Progressbar
 #v1.1119Beta -->add overlap check for imei and chip id
 #v1.1121Beta -->output excel as report, need install xlwt module first for your python
-
+#v1.1200Beta -->fill the ENTRY for UI
 class Application(Frame):
 
     #to walk through the dir
@@ -316,7 +316,7 @@ class Application(Frame):
         
         #path for workspace
         self.entrythingy = Entry(justify = "left",width = 40)
-        self.entrythingy.pack({"side": "top"})
+        self.entrythingy.pack(expand=YES, fill=BOTH)
 
         # here is the application variable
         self.contents = StringVar()
@@ -336,7 +336,7 @@ class Application(Frame):
        
         #path for NVRAM CAL DATA
         self.calpathentry = Entry(justify = "left",width = 40)
-        self.calpathentry.pack({"side": "top"})
+        self.calpathentry.pack(expand=YES, fill=BOTH)
 
         # here is the application variable
         self.contentscal = StringVar()
@@ -348,7 +348,7 @@ class Application(Frame):
         vcmd = (self.register(self.validate),'%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
         #head
         self.imeihead = Entry(validate = 'key', justify = "left",width = 40)
-        self.imeihead.pack({"side": "top"})
+        self.imeihead.pack(expand=YES, fill=BOTH)
 
         # here is the application variable
         self.contentshead = StringVar()
@@ -361,7 +361,7 @@ class Application(Frame):
         
         #tail
         self.imeitail = Entry(validate = 'key', justify = "left",width = 40)
-        self.imeitail.pack({"side": "top"})
+        self.imeitail.pack(expand=YES, fill=BOTH)
 
         # here is the application variable
         self.contentstail = StringVar()
@@ -390,8 +390,8 @@ class Application(Frame):
         self._checkbutton = Checkbutton(self, variable = self.checkv, text = "scatter", command = self.callCheckbutton)
         self._checkbutton.pack({"side": "right"})
 
-        self.pbar = ttk.Progressbar(root, length=284, maximum=120)
-        self.pbar.pack()
+        self.pbar = ttk.Progressbar(root, orient = "horizontal", length=370, maximum=120)
+        self.pbar.pack(expand=YES, fill=BOTH)
 
     def validate(self, action, index, value_if_allowed, prior_value, text, validation_type, trigger_type, widget_name):             
         if len(value_if_allowed) > 14:
@@ -775,7 +775,7 @@ class Application(Frame):
         
         self.totalView = []
         
-        self.version_info = "imei_cal_match_it version v1.1121Beta"
+        self.version_info = "imei_cal_match_it version v1.1200Beta"
         self.a_null_chip_id = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
         
         self.overlaped_imei = [] #different imei use same chipid with cal
@@ -789,10 +789,10 @@ class Application(Frame):
         
 if __name__=="__main__":
     root = Tk()
-    
+    root.title("IMEI CHECK") 
     #lock the size
-    root.minsize(300,160)
-    root.maxsize(300,160)
+    root.minsize(380,178)
+    root.maxsize(380,178)
     
     app = Application(master=root)
     app.mainloop()

@@ -19,7 +19,7 @@ setup(options = options,
       description = "DualTransServer",
       name = "DualTransServer",
       zipfile = None,  
-      console = [{"script": "imei_cal_match_it_50_gui.pyw", "icon_resources": [(1, "Scanners.ico")]}]  
+      console = [{"script": "imei_cal_match_it_50_gui.pyw", "icon_resources": [(1, "DualTransServerIco.ico")]}]  
       )
 
 #setup(console=['DualTransServer.py'])
