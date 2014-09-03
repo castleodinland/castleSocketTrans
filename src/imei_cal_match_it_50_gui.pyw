@@ -3,6 +3,7 @@
 
 import Tkinter
 from Tkinter import *
+import tkMessageBox
 import ttk
 import os
 from os.path import walk, join, normpath, isdir, isfile, abspath
@@ -27,7 +28,7 @@ IS_FOR_CASTLE_TST = True #False True
 #v1.1121Beta -->output excel as report, need install xlwt module first for your python
 #v1.1200Beta -->fill the ENTRY for UI
 class Application(Frame):
-
+    xlsioException = 0
     #to walk through the dir
     def mydir(self, arg, dirname, names):
         #global gNvCalPath
@@ -188,8 +189,6 @@ class Application(Frame):
         walk(path, self.mydir, 1)
         
         self.pbar.config(value=110)
-        
-
      
         """
         Parse the imei from WriteIMEI*.ini
@@ -198,8 +197,11 @@ class Application(Frame):
             print ("No WriteIMEI.ini found!\n exit\n")
             self.lb_title["text"] = "Error:No WriteIMEI.ini!"
             self.hi_there["state"] = "active"
+            #show the warning messagebox
+            root.event_generate('<<Ask>>', when='tail')
             return
         
+        #really begin to check
         for iniFile in self.list_ini_files:
             iniFileHandle = open(iniFile,'r')
             readState = 0
@@ -285,13 +287,21 @@ class Application(Frame):
         self.form_result_excel(workbook)
         self.form_band_confirm_excel(workbook)
         self.form_comparison_excel(workbook)
-        workbook.save('TotalView.xls')
-        
-        #INPUT_SOME = raw_input("Press ENTER key to exit.")
-        self.lb_title["text"] = "FINISHED!"
-        self.do_clean_work()
-        self.hi_there["state"] = "active"
-        self.pbar.config(value=120)
+        try:
+            workbook.save('TotalView.xls')
+        except Exception as e:
+            print ("Workbook save exception: %s" % e)
+            Application.xlsioException = str(e);
+            root.event_generate('<<XLS_ERROR>>', when='tail')
+            self.lb_title["text"] = "pls close opened xls file!"
+        else:
+            self.lb_title["text"] = "FINISHED!"
+            self.pbar.config(value=120)
+        finally:
+            #INPUT_SOME = raw_input("Press ENTER key to exit.")
+            self.do_clean_work()
+            self.hi_there["state"] = "active"
+            
         
     def say_hi(self):
         self.lb_title["text"] = "RUNING, Please wait..."
@@ -775,7 +785,7 @@ class Application(Frame):
         
         self.totalView = []
         
-        self.version_info = "imei_cal_match_it version v1.1200Beta"
+        self.version_info = "imei_cal_match_it version v1.1202Beta"
         self.a_null_chip_id = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
         
         self.overlaped_imei = [] #different imei use same chipid with cal
@@ -786,6 +796,13 @@ class Application(Frame):
         
         self.init_font_style()
         
+    @classmethod
+    def askt(cls, event=None):
+        tkMessageBox.showwarning('Error', 'Error:No WriteIMEI.ini!')
+        
+    @classmethod
+    def save_error(cls, event=None):
+        tkMessageBox.showwarning('Error', Application.xlsioException)
         
 if __name__=="__main__":
     root = Tk()
@@ -793,6 +810,8 @@ if __name__=="__main__":
     #lock the size
     root.minsize(380,178)
     root.maxsize(380,178)
+    root.bind('<<Ask>>', Application.askt)
+    root.bind('<<XLS_ERROR>>', Application.save_error)
     
     app = Application(master=root)
     app.mainloop()

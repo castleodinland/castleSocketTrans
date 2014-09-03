@@ -3,6 +3,7 @@
 
 import Tkinter
 from Tkinter import *
+import tkMessageBox
 import ttk
 import os
 from os.path import walk, join, normpath, isdir, isfile, abspath
@@ -27,7 +28,7 @@ IS_FOR_CASTLE_TST = True #False True
 #v1.1121Beta -->output excel as report, need install xlwt module first for your python
 #v1.1200Beta -->fill the ENTRY for UI
 class Application(Frame):
-
+    xlsioException = 0
     #to walk through the dir
     def mydir(self, arg, dirname, names):
         #global gNvCalPath
@@ -82,7 +83,7 @@ class Application(Frame):
                         self.lIsNULLBandCalByChipID.append(fullfilename[i][-32:])                        
                     #continue
                     
-                    self.sum_ws_st33_file_numbre(str(fullfilename[i]))
+                    self.sum_ws_st33_file_number(str(fullfilename[i]))
             if(dirname == self.contents.get()):
                 #update bar 
                 show_value = i*100/len(file)
@@ -93,9 +94,9 @@ class Application(Frame):
             the_first_lay_dir = True
         #print "\n".join(list_ini_files)       
          
-    def sum_ws_st33_file_numbre(self, dir):
+    def sum_ws_st33_file_number(self, tdir):
         st33number = 0
-        for parent, dirnames, filenames in os.walk(dir+"\\Z\\NVRAM\\NVD_IMEI"):
+        for parent, dirnames, filenames in os.walk(tdir+"\\Z\\NVRAM\\NVD_IMEI"):
             for filename in filenames:
                 #print "SEE ST33 file?-->" + filename + "\n"
                 p = re.compile("ST33.*")
@@ -103,12 +104,12 @@ class Application(Frame):
                 if matchit:
                     st33number = st33number + 1
         if st33number > 1:
-            #print "GET ONE LIST: " + dir[-32:] +" is ST33" + "\n"
+            #print "GET ONE LIST: " + tdir[-32:] +" is ST33" + "\n"
             self.ws_st33_file_number = self.ws_st33_file_number + 1
         else:
-            print "GET ONE LIST: " + dir[-32:] +" is NOT ST33" + "\n"
+            #print "GET ONE LIST: " + tdir[-32:] +" is NOT ST33" + "\n"
             self.ws_not_st33_file_number = self.ws_not_st33_file_number + 1
-            self.NotST33FileList.append(dir[-32:])
+            self.NotST33FileList.append(tdir[-32:])
         return 0
            
     def get_imei_by_chipid(self, chipid):
@@ -212,8 +213,6 @@ class Application(Frame):
         walk(path, self.mydir, 1)
         
         self.pbar.config(value=110)
-        
-
      
         """
         Parse the imei from WriteIMEI*.ini
@@ -222,8 +221,11 @@ class Application(Frame):
             print ("No WriteIMEI.ini found!\n exit\n")
             self.lb_title["text"] = "Error:No WriteIMEI.ini!"
             self.hi_there["state"] = "active"
+            #show the warning messagebox
+            root.event_generate('<<Ask>>', when='tail')
             return
         
+        #really begin to check
         for iniFile in self.list_ini_files:
             iniFileHandle = open(iniFile,'r')
             readState = 0
@@ -309,13 +311,22 @@ class Application(Frame):
         self.form_result_excel(workbook)
         self.form_band_confirm_excel(workbook)
         self.form_comparison_excel(workbook)
-        workbook.save('TotalView.xls')
-        
-        #INPUT_SOME = raw_input("Press ENTER key to exit.")
-        self.lb_title["text"] = "FINISHED!"
-        self.do_clean_work()
-        self.hi_there["state"] = "active"
-        self.pbar.config(value=120)
+        self.form_st33_check_excel(workbook)
+        try:
+            workbook.save('TotalView.xls')
+        except Exception as e:
+            print ("Workbook save exception: %s" % e)
+            Application.xlsioException = str(e);
+            root.event_generate('<<XLS_ERROR>>', when='tail')
+            self.lb_title["text"] = "pls close opened xls file!"
+        else:
+            self.lb_title["text"] = "FINISHED!"
+            self.pbar.config(value=120)
+        finally:
+            #INPUT_SOME = raw_input("Press ENTER key to exit.")
+            self.do_clean_work()
+            self.hi_there["state"] = "active"
+            
         
     def say_hi(self):
         self.lb_title["text"] = "RUNING, Please wait..."
@@ -713,25 +724,6 @@ class Application(Frame):
             worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(e), self.nordata_style)
         ttoffset = ttoffset + len(self.lQUADDefaultCalByChipID) + 2
         
-        ###WS ST33 file
-        ttstr = "CAL NUMS with ST33* > 1 = %d" %(self.ws_st33_file_number)
-        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)   
-        ttoffset = ttoffset + 1
-        ttstr = "CAL NUMS with ST33* < 1 = %d" %(self.ws_not_st33_file_number)
-        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)   
-        ttoffset = ttoffset + 1
-        
-        ttstr = "NOT ENOUGH ST33 by chip id and imei:"
-        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)   
-        ttoffset = ttoffset + 1
-        the_liter = 0
-        for i, e in zip(range(len(self.NotST33FileList)), self.NotST33FileList):
-            worksheet.write(the_liter + ttoffset, 0, e, self.nordata_style)
-            worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(e), self.nordata_style)
-            the_liter = the_liter + 1
-        ttoffset = ttoffset + len(self.NotST33FileList) + 2
-      
-        
         pass
     
     def form_band_confirm_excel(self, workbook):
@@ -785,7 +777,36 @@ class Application(Frame):
         ttoffset = ttoffset + len(self.IMEIAndChipIDPair) + 2
         
         pass
-                   
+          
+    def form_st33_check_excel(self, workbook):
+        ttoffset = 0
+        worksheet = workbook.add_sheet('st33', cell_overwrite_ok=True)
+        
+        worksheet.col(0).width =  256 * 50  
+        worksheet.col(1).width =  256 * 26
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, '****The Check work for ST33****', self.title_style)
+        ttoffset = ttoffset + 2        
+        
+        ttstr = "CAL NUMS with ST33* > 1 = %d" %(self.ws_st33_file_number)
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)   
+        ttoffset = ttoffset + 1
+        ttstr = "CAL NUMS with ST33* < 1 = %d" %(self.ws_not_st33_file_number)
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)   
+        ttoffset = ttoffset + 2
+        
+        ttstr = "NOT ENOUGH ST33 by chip id and imei:"
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)   
+        ttoffset = ttoffset + 1
+        the_liter = 0
+        for i, e in zip(range(len(self.NotST33FileList)), self.NotST33FileList):
+            worksheet.write(the_liter + ttoffset, 0, e, self.nordata_style)
+            worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(e), self.nordata_style)
+            the_liter = the_liter + 1
+        ttoffset = ttoffset + len(self.NotST33FileList) + 2
+        
+        pass          
+
+                  
     def __init__(self, master=None):
         
         self.IMEIAndChipIDPair = []
@@ -833,6 +854,13 @@ class Application(Frame):
         
         self.init_font_style()
         
+    @classmethod
+    def askt(cls, event=None):
+        tkMessageBox.showwarning('Error', 'Error:No WriteIMEI.ini!')
+        
+    @classmethod
+    def save_error(cls, event=None):
+        tkMessageBox.showwarning('Error', Application.xlsioException)
         
 if __name__=="__main__":
     root = Tk()
@@ -840,6 +868,8 @@ if __name__=="__main__":
     #lock the size
     root.minsize(380,178)
     root.maxsize(380,178)
+    root.bind('<<Ask>>', Application.askt)
+    root.bind('<<XLS_ERROR>>', Application.save_error)
     
     app = Application(master=root)
     app.mainloop()
