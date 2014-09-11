@@ -169,6 +169,8 @@ class Application(Frame):
         del self.list_ini_files[:]
         
         del self.totalView[:]
+        
+        self.imei_with_time_dic.clear()
     
     def run_check(self, tpath, thead, ttail, calpath):
         
@@ -278,7 +280,7 @@ class Application(Frame):
                     same_imei_pair.append(ttPair)
             set_for_same_imei_pair = set(same_imei_pair)
             if(len(set_for_same_imei_pair) > 1):
-                tpair[7] = len(set_for_same_imei_pair)
+                tpair[7] = len(set_for_same_imei_pair)-1
         
         #excel:::
         workbook = xlwt.Workbook()

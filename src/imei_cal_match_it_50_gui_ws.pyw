@@ -27,8 +27,18 @@ IS_FOR_CASTLE_TST = True #False True
 #v1.1119Beta -->add overlap check for imei and chip id
 #v1.1121Beta -->output excel as report, need install xlwt module first for your python
 #v1.1200Beta -->fill the ENTRY for UI
+current_version = "v1.1210Beta" #-->add error message box for exceptions
+
 class Application(Frame):
     xlsioException = 0
+    refCalFiles = frozenset(["REFCALIBRAT\DUAL\MT07_002",
+                             "REFCALIBRAT\DUAL\MT08_002",
+                             "REFCALIBRAT\DUAL\MT0M_002",
+                             "REFCALIBRAT\DUAL\MT0N_002",
+                             "REFCALIBRAT\QUAD\MT06_002",
+                             "REFCALIBRAT\QUAD\MT09_002",
+                             "REFCALIBRAT\QUAD\MT0L_002",
+                             "REFCALIBRAT\QUAD\MT0O_002"])
     #to walk through the dir
     def mydir(self, arg, dirname, names):
         #global gNvCalPath
@@ -194,6 +204,8 @@ class Application(Frame):
         self.ws_not_st33_file_number = 0
         del self.NotST33FileList[:]
         
+        self.imei_with_time_dic.clear()
+        
     def run_check(self, tpath, thead, ttail, calpath):
         
         global gNvCalPath
@@ -202,11 +214,15 @@ class Application(Frame):
         print self.version_info , '\n'
         print "Cal Path:" , gNvCalPath, '\n' 
         print "[path imeiHead imeiTail]"
-    
+        
         path = tpath
         imei_range_head = int(thead)*10
         imei_range_tail = int(ttail)*10 + 9
         print("searching range: [%d, %d]\n" %(imei_range_head, imei_range_tail))
+        
+        if(not self.check_ref_cal_files()):
+            root.event_generate('<<REFCALIBRAT_ERROR>>', when='tail')
+            return
         
         #self.pbar.config(value=10)
         
@@ -231,8 +247,11 @@ class Application(Frame):
             readState = 0
             matchit1 = 0
             matchit2 = 0
+            matchit3 = 0
+            matchtime = 0
             strIMEI = 0
             strChipID = 0
+            strTime = 0
             while True:
                 line = iniFileHandle.readline()
                 
@@ -240,6 +259,14 @@ class Application(Frame):
                     iniFileHandle.close()
                     readState = 0
                     break
+                
+                #get time head and tail
+                time_ht = "timerange=(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})~(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})"
+                matchtime = re.search(time_ht, line)
+                if matchtime:
+                    self.time_range_head = self.time_to_int(matchtime.group(1))
+                    self.time_range_tail = self.time_to_int(matchtime.group(2))
+                
                 imei = "\[\d{15}\]" #a real imei
                 matchit1 = re.search(imei, line)
                 if matchit1:
@@ -247,21 +274,37 @@ class Application(Frame):
                     readState = 1
                     strIMEI = matchit1.group()[1:16]
                     
-                rid = "rid=[0-9A-Fa-f]{32}" #a real rid
-                matchit2 = re.search(rid, line)
+                timed = "time=\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}"
+                matchit2 = re.search(timed, line)
                 if matchit2:
-                    self.lallRidNumInINI.append(matchit2.group()[4:36])
                     if(readState == 1):
                         readState = 2
-                        strChipID = matchit2.group()[4:36]
+                        strTime = matchit2.group()[5:24]
+                    
+                rid = "rid=[0-9A-Fa-f]{32}" #a real rid
+                matchit3 = re.search(rid, line)
+                if matchit3:
+                    self.lallRidNumInINI.append(matchit3.group()[4:36])
+                    if(readState == 2):
+                        readState = 3
+                        strChipID = matchit3.group()[4:36]
     
-                if readState == 2:
-                    t_pair = (strIMEI, strChipID)
+                if readState == 3:
+                    t_pair = (strIMEI, strChipID, strTime)
                     self.IMEIAndChipIDPair.append(t_pair)
                     readState = 0
+                    self.imei_with_time_dic[strIMEI] = strTime
     
             iniFileHandle.close()
             readState = 0
+            
+        if(self.time_range_head == 0 or self.time_range_tail ==0):
+            root.event_generate('<<TIMERANGE_ERROR>>', when='tail')
+            return
+    
+        print ("time range: %d:%d" %(self.time_range_head, self.time_range_tail))
+        #for ttPair in self.imei_with_time_dic:
+        #print (self.imei_with_time_dic.items())
     
         #Comparison Table, now is the total view
         #total view: <imei><chip id><is cal exist><DUAL is defult><QUAD is defult><cal is bad>[be chipid overlap][imei overlap]
@@ -302,7 +345,7 @@ class Application(Frame):
                     same_imei_pair.append(ttPair)
             set_for_same_imei_pair = set(same_imei_pair)
             if(len(set_for_same_imei_pair) > 1):
-                tpair[7] = len(set_for_same_imei_pair)
+                tpair[7] = len(set_for_same_imei_pair)-1
         
         #excel:::
         workbook = xlwt.Workbook()
@@ -424,7 +467,7 @@ class Application(Frame):
         self.checkv = IntVar()
         self._checkbutton = Checkbutton(self, variable = self.checkv, text = "scatter", command = self.callCheckbutton)
         self._checkbutton.pack({"side": "right"})
-
+ 
         self.pbar = ttk.Progressbar(root, orient = "horizontal", length=370, maximum=120)
         self.pbar.pack(expand=YES, fill=BOTH)
 
@@ -693,13 +736,16 @@ class Application(Frame):
         lallCalNumInINI_set = set(self.lallCalNumInINI)
                 
         the_liter = 0
-        for cnini in lallCalNumInINI_set:
-            reImeiNo = int(cnini[0:16])
-            if reImeiNo < imei_range_head or reImeiNo > imei_range_tail:
-                #outResultFileHandle.write("Out of range imei: %s\n" %(cnini))
-                worksheet.write(countRange + ttoffset, 0, cnini, self.nordata_style)
-                countRange += 1
-                
+        for (k, v) in self.imei_with_time_dic.items():
+            #print ("%s-->%s" %(k, v))
+            reImeiNo = int(k[0:16])
+            if (reImeiNo < imei_range_head or reImeiNo > imei_range_tail):
+                if(self.time_to_int(v)>self.time_range_head and self.time_to_int(v)<self.time_range_tail):
+                    #outResultFileHandle.write("Out of range imei: %s\n" %(cnini))
+                    worksheet.write(countRange + ttoffset, 0, v, self.nordata_style)
+                    worksheet.write(countRange + ttoffset, 1, k, self.nordata_style)
+                    countRange += 1
+
         ttoffset = ttoffset + countRange 
         ttstr = "totally %d items,and %d out of range." %(len(lallCalNumInINI_set), countRange)
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)        
@@ -806,7 +852,27 @@ class Application(Frame):
         
         pass          
 
-                  
+    def time_to_int(self, time_str):#XXXX-XX-XX XX:XX:XX
+        reg = "(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})" #a real rid
+        matchit = re.search(reg, time_str)
+        if matchit:
+            bigstr = '%s%s%s%s%s%s' %(matchit.group(1),matchit.group(2),matchit.group(3),matchit.group(4),matchit.group(5),matchit.group(6))
+            #print ("Castle see: %s" %(bigstr))
+            return int(bigstr)
+        return 0
+    
+    def check_ref_cal_files(self):
+        #check refcalibrate files
+        current_refcalfile = set()
+        for parent, dirnames, filenames in os.walk("REFCALIBRAT"):
+            for filename in filenames:
+                #print "SEE REF CAL files-->" + join(parent,filename) + "\n"
+                current_refcalfile.add(join(parent,filename))
+        if(current_refcalfile >= Application.refCalFiles):#is child set?
+            return True
+        else:
+            return False
+                         
     def __init__(self, master=None):
         
         self.IMEIAndChipIDPair = []
@@ -835,11 +901,14 @@ class Application(Frame):
         self.imei_range_head = 0
         self.imei_range_tail = 0
         
+        self.time_range_head = 0
+        self.time_range_tail = 0
+        
         self.resultOfCompFile = 0
         
         self.totalView = []
         
-        self.version_info = "imei_cal_match_it version v1.1202Beta"
+        self.version_info = "imei_cal_match_it version" + current_version
         self.a_null_chip_id = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
         
         self.overlaped_imei = [] #different imei use same chipid with cal
@@ -847,6 +916,8 @@ class Application(Frame):
         self.ws_st33_file_number = 0
         self.ws_not_st33_file_number = 0
         self.NotST33FileList = []
+        
+        self.imei_with_time_dic = dict()
         
         Frame.__init__(self, master)
         self.pack()
@@ -861,6 +932,14 @@ class Application(Frame):
     @classmethod
     def save_error(cls, event=None):
         tkMessageBox.showwarning('Error', Application.xlsioException)
+    
+    @classmethod
+    def time_range_error(cls, event=None):
+        tkMessageBox.showwarning('Error', 'cannot find time range!')        
+        
+    @classmethod
+    def ref_cal_error(cls, event=None):
+        tkMessageBox.showwarning('Error', 'REFCALIBRAT files error!')        
         
 if __name__=="__main__":
     root = Tk()
@@ -868,8 +947,11 @@ if __name__=="__main__":
     #lock the size
     root.minsize(380,178)
     root.maxsize(380,178)
+    
     root.bind('<<Ask>>', Application.askt)
     root.bind('<<XLS_ERROR>>', Application.save_error)
+    root.bind('<<TIMERANGE_ERROR>>', Application.time_range_error)
+    root.bind('<<REFCALIBRAT_ERROR>>', Application.ref_cal_error)
     
     app = Application(master=root)
     app.mainloop()

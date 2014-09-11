@@ -238,3 +238,5 @@ src/tst_null_folder/*
 
 #make exe build
 src/PyInstaller-2.1/imei_cal_match_it_50_gui/*
+*.exe
+*.pdf
