@@ -231,6 +231,8 @@ src/1307004-1008-50/*
 src/1307004-1008-t/*
 src/1310005-1008-1234/*
 src/1310016-2007/*
+src/1409002/*
+src/cust_cal_dir/*
 src/build/*
 src/dist/*
 src/cal_3g/*
@@ -240,3 +242,7 @@ src/tst_null_folder/*
 src/PyInstaller-2.1/imei_cal_match_it_50_gui/*
 *.exe
 *.pdf
+src/config.ini
+src/main_ini_file.ini
+src/mydatabase.db3
+src/config_backup.ini
