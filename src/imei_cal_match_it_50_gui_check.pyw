@@ -41,7 +41,7 @@ class Application(Frame):
     refFileException = 0
 
     default_config_ini =    ["\n[UI setting]\n",
-                             "process_folder = 1307004-1008-t\n",
+                             "process_folder = WriteIMEI\n",
                              "calibrat_folder = Z\NVRAM\CALIBRAT\n",
                              "imei_range_head = 35909402000000\n",
                              "imei_range_tail = 35909402000008\n",
@@ -197,13 +197,8 @@ class Application(Frame):
         sub_abnormal_pair = []
         for tpair in self.totalView:
             if(tpair[1] == self.a_null_chip_id or tpair[2] != 1 or tpair[3] != 0
-               or tpair[4] != 0 or tpair[5] != 0 or tpair[6] != 0 or tpair[7] != 0):
+               or tpair[4] != 0 or tpair[5] != 0):
                 abnormal_pair.append(tpair)
-                if(tpair[6] != 0):
-                    for ttpair in self.totalView:
-                        if(ttpair[1] == tpair[1] and ttpair[0] != tpair[0]):
-                            sub_abnormal_pair.append(ttpair)
-           
         return abnormal_pair, sub_abnormal_pair
 
     
@@ -228,7 +223,7 @@ class Application(Frame):
         self.ws_not_st33_file_number = 0
         del self.NotST33FileList[:]
         del self.olpWhenCpyByChipID[:]
-        
+        del self.imei_range_arry[:]
         self.imei_with_time_dic.clear()
         
     def run_check(self, tpath, thead, ttail, calpath):
@@ -243,7 +238,7 @@ class Application(Frame):
         path = tpath
         imei_range_head = int(thead)*10
         imei_range_tail = int(ttail)*10 + 9
-        print("searching range: [%d, %d]\n" %(imei_range_head, imei_range_tail))
+        #print("searching range: [%d, %d]\n" %(imei_range_head, imei_range_tail))
         
         #some check work before running
         if(not os.path.isdir(path)):
@@ -321,15 +316,22 @@ class Application(Frame):
             return
      
         #really begin to check
+        need_imei_range = 1
         for iniFile in self.list_ini_files:
             iniFileHandle = open(iniFile,'r')
             readState = 0
+            imei_state = 0
+            imei_header_reg = 0
             matchit1 = 0
             matchit2 = 0
             matchit3 = 0
+            matchit4 = 0
             strIMEI = 0
             strChipID = 0
             strTime = 0
+            imei_h = 0
+            imei_t = 0
+            #only read the first WriteIMEI.ini for imei range
             while True:
                 line = iniFileHandle.readline()
                 
@@ -337,7 +339,28 @@ class Application(Frame):
                     iniFileHandle.close()
                     readState = 0
                     break
-                
+                if(need_imei_range):
+                    if imei_state == 0:
+                        imei_r_h = "Range\dStart = (\d{15})"
+                        imei_h = re.search(imei_r_h, line)
+                        if imei_h:
+                            self.contentshead.set(imei_h.group(1)[0:14])
+                            imei_range_head = int(imei_h.group(1)[0:14])
+                            thead = imei_range_head
+                            imei_header_reg = imei_range_head
+                            imei_state = 1
+                            
+                    if imei_state == 1:
+                        imei_r_t = "Range\dEnd = (\d{15})"
+                        imei_t = re.search(imei_r_t, line)
+                        if imei_t:
+                            self.contentstail.set(imei_t.group(1)[0:14])
+                            imei_range_tail = int(imei_t.group(1)[0:14])
+                            ttail = imei_range_tail
+                            if(ttail>imei_header_reg):
+                                self.imei_range_arry.append((imei_header_reg, ttail))
+                            imei_state = 0
+
                 imei = "\[\d{15}\]" #a real imei
                 matchit1 = re.search(imei, line)
                 if matchit1:
@@ -359,19 +382,27 @@ class Application(Frame):
                     if(readState == 2):
                         readState = 3
                         strChipID = matchit3.group()[4:36]
-    
-                if readState == 3:
+                        
+                ischeck = "check=1"
+                matchit4 = re.search(ischeck, line)
+                if matchit4:
+                    if(readState == 3):
+                        readState = 4
+                        
+                if readState == 4:
                     t_pair = (strIMEI, strChipID, strTime)
                     if(t_pair not in self.IMEIAndChipIDPair):
                         self.IMEIAndChipIDPair.append(t_pair)
                     readState = 0
                     self.imei_with_time_dic[strIMEI] = strTime
-    
+                    
+            need_imei_range = 0        
             iniFileHandle.close()
             readState = 0
             
    
         print ("time range: %d:%d" %(self.time_range_head, self.time_range_tail))
+        
         #for ttPair in self.imei_with_time_dic:
         #print (self.imei_with_time_dic.items())
     
@@ -380,11 +411,12 @@ class Application(Frame):
         #init total view:
         
         self.lb_title["text"] = 'process big table'
-        
-        for i in range(int(thead),int(ttail)+1):
-            t_pair = [i, self.a_null_chip_id, 0, 1, 1, 1, 0, 0]
-            if t_pair not in self.totalView:
-                self.totalView.append(t_pair)
+        for imei_range_pair in self.imei_range_arry:
+            print "Get one range pair: %d--->%d" %(imei_range_pair[0], imei_range_pair[1])
+            for i in range(imei_range_pair[0], imei_range_pair[1]+1):
+                t_pair = [i, self.a_null_chip_id, 0, 1, 1, 1, 0, 0]
+                if t_pair not in self.totalView:
+                    self.totalView.append(t_pair)
         
         for tpair in self.totalView:
          
@@ -441,14 +473,16 @@ class Application(Frame):
         #excel:::
         self.lb_title["text"] = 'Generate result xls'
         workbook = xlwt.Workbook()
+        #self.form_result_excel(workbook)
         self.form_total_view_excel(workbook)
         self.form_total_abnormal_excel(workbook)
-        self.form_result_excel(workbook)
+        """
         self.form_band_confirm_excel(workbook)
         self.form_comparison_excel(workbook)
         if(int(self.config_ini_data['check_st33_files'])):
             self.form_st33_check_excel(workbook)
         self.form_combine_result_excel(workbook)
+        """
         
         '''    
         self.try_to_close_xls_program()
@@ -516,6 +550,7 @@ class Application(Frame):
             self.contents.set(self.config_ini_data['process_folder'])
         # tell the entry widget to watch this variable
         self.entrythingy["textvariable"] = self.contents
+        self.entrythingy["state"] = 'disabled'
         #self.entrythingy["click"] = self.tst_click
         
         # and here we get a callback when the user hits return.
@@ -544,11 +579,10 @@ class Application(Frame):
         # here is the application variable
         self.contentshead = StringVar()
         # set it to some value
-        if(IS_FOR_CASTLE_TST != True):
-            self.contentshead.set(self.config_ini_data['imei_range_head'])
-        else:
-            self.contentshead.set(self.config_ini_data['imei_range_head'])
+        self.contentshead.set('00000000000000')
+
         self.imeihead["textvariable"] = self.contentshead
+        self.imeihead["state"] = 'disabled'
         
         #tail
         self.imeitail = Entry(validate = 'key', justify = "left",width = 40)
@@ -557,11 +591,10 @@ class Application(Frame):
         # here is the application variable
         self.contentstail = StringVar()
         # set it to some value
-        if(IS_FOR_CASTLE_TST != True):
-            self.contentstail.set(self.config_ini_data['imei_range_tail'])
-        else:
-            self.contentstail.set(self.config_ini_data['imei_range_tail'])
+        self.contentstail.set('00000000000000')
+
         self.imeitail["textvariable"] = self.contentstail
+        self.imeitail["state"] = 'disabled'
         
         self.hi_there = Button(self, relief=RAISED, width = 15)
         self.hi_there["text"] = "RUN",
@@ -728,7 +761,7 @@ class Application(Frame):
         
         #set label
         ttoffset = ttoffset + 1
-        tlabel = ['IMEI', 'Chip ID', 'have cal', 'DUAL DFT', 'QUAD DFT', 'Is bad?', 'chipid olp', 'imei olp']
+        tlabel = ['IMEI', 'Chip ID', 'have cal', 'DUAL DFT', 'QUAD DFT', 'Is bad?']
         for i, e in zip(range(len(tlabel)), tlabel):
         #for i in range(0,len(tlabel)):
             worksheet.write(ttoffset, i, e, self.label_style)
@@ -749,16 +782,16 @@ class Application(Frame):
             #is bad
             worksheet.write(i+ttoffset, 5, e[5], self.get_data_style_for_xlwt(e[5]))
             #chipid overlap
-            worksheet.write(i+ttoffset, 6, e[6], self.get_data_style_for_xlwt(e[6]))   
+            #worksheet.write(i+ttoffset, 6, e[6], self.get_data_style_for_xlwt(e[6]))   
             #imei overlap
-            worksheet.write(i+ttoffset, 7, e[7], self.get_data_style_for_xlwt(e[7]))   
+            #worksheet.write(i+ttoffset, 7, e[7], self.get_data_style_for_xlwt(e[7]))   
         ttoffset = ttoffset + len(self.totalView) + 2
         
         
     
     def form_total_abnormal_excel(self, workbook):
         ttoffset = 0
-        worksheet = workbook.add_sheet('abnormal', cell_overwrite_ok=True)
+        worksheet = workbook.add_sheet('result', cell_overwrite_ok=True)
         worksheet.col(0).width =  256 * 26
         worksheet.col(1).width =  256 * 50
         
@@ -767,7 +800,7 @@ class Application(Frame):
         
         worksheet.panes_frozen = True
         worksheet.remove_splits = True
-        worksheet.horz_split_pos = 4
+        worksheet.horz_split_pos = 5
         
         #set titles
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, '********The Total Abnormal Table For Check:********', self.title_style) 
@@ -776,16 +809,17 @@ class Application(Frame):
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
         
         ttoffset = ttoffset + 1
-        tlabel = ['IMEI', 'Chip ID', 'have cal', 'DUAL DFT', 'QUAD DFT', 'Is bad?', 'chipid olp', 'imei olp']
+        
+        abnormal_pair,sub_abnormal_pair = self.hold_abnormal_pair_from()
+        ttstr = "Total abnormal data: %d while good data: %d" %(len(abnormal_pair), len(self.totalView)-len(abnormal_pair))
+        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
+        
+        ttoffset = ttoffset + 1
+        tlabel = ['IMEI', 'Chip ID', 'have cal', 'DUAL DFT', 'QUAD DFT', 'Is bad?']
         for i, e in zip(range(len(tlabel)), tlabel):
         #for i in range(0,len(tlabel)):
             worksheet.write(ttoffset, i, e, self.label_style)
-        
-        abnormal_pair,sub_abnormal_pair = self.hold_abnormal_pair_from()
-        
-        ttstr = "Total abnormal data: %d" %(len(abnormal_pair))
-        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
-        
+         
         ttoffset = ttoffset + 1
 
         for i, e in zip(range(len(abnormal_pair)), abnormal_pair):
@@ -802,35 +836,11 @@ class Application(Frame):
             #is bad
             worksheet.write(i+ttoffset, 5, e[5], self.get_data_style_for_xlwt(e[5]))
             #chipid overlap
-            worksheet.write(i+ttoffset, 6, e[6], self.get_data_style_for_xlwt(e[6]))   
+            #worksheet.write(i+ttoffset, 6, e[6], self.get_data_style_for_xlwt(e[6]))   
             #imei overlap
-            worksheet.write(i+ttoffset, 7, e[7], self.get_data_style_for_xlwt(e[7]))  
+            #worksheet.write(i+ttoffset, 7, e[7], self.get_data_style_for_xlwt(e[7]))  
         ttoffset = ttoffset + len(abnormal_pair) + 1
         
-        #sub-abnormal data
-        ttstr = "Total sub-abnormal data: %d" %(len(sub_abnormal_pair))
-        worksheet.write_merge(ttoffset, ttoffset, 0, 1, ttstr, self.subtitle_style)
-        ttoffset = ttoffset + 1
-       
-        for i, e in zip(range(len(sub_abnormal_pair)), sub_abnormal_pair):
-            #imei
-            worksheet.write(i+ttoffset, 0, e[0], self.nordata_style)
-            #chip id
-            worksheet.write(i+ttoffset, 1, e[1], self.get_chipid_style_for_xlwt(e[1]))
-            #have cal
-            worksheet.write(i+ttoffset, 2, e[2], self.get_data_style_for_xlwt_ex(e[2]))
-            #is dual defualt
-            worksheet.write(i+ttoffset, 3, e[3], self.get_data_style_for_xlwt(e[3]))        
-            #is quad defualt
-            worksheet.write(i+ttoffset, 4, e[4], self.get_data_style_for_xlwt(e[4]))   
-            #is bad
-            worksheet.write(i+ttoffset, 5, e[5], self.get_data_style_for_xlwt(e[5]))
-            #chipid overlap
-            worksheet.write(i+ttoffset, 6, e[6], self.get_data_style_for_xlwt(e[6]))   
-            #imei overlap
-            worksheet.write(i+ttoffset, 7, e[7], self.get_data_style_for_xlwt(e[7]))  
-        ttoffset = ttoffset + len(abnormal_pair) + 2        
-        #worksheet2 = workbook.add_sheet('EMPTY', cell_overwrite_ok=True) 
         pass
     
     def form_result_excel(self, workbook):
@@ -887,7 +897,7 @@ class Application(Frame):
         for (k, v) in self.imei_with_time_dic.items():
             #print ("%s-->%s" %(k, v))
             reImeiNo = int(k[0:16])
-            if (reImeiNo < imei_range_head or reImeiNo > imei_range_tail):
+            if (not self.is_imei_in_range(reImeiNo)):
                 if(self.time_to_int(v)>self.time_range_head and self.time_to_int(v)<self.time_range_tail):
                     #outResultFileHandle.write("Out of range imei: %s\n" %(cnini))
                     worksheet.write(countRange + ttoffset, 0, v, self.nordata_style)
@@ -1168,6 +1178,14 @@ class Application(Frame):
         else:
             print 'Create ' + the_target_all_cal + 'failed!'
             
+    def is_imei_in_range(self, in_imei):
+        for pair in self.imei_range_arry:
+            if(in_imei>=((pair[0])*10) and in_imei<=((pair[1])*10)+9):
+                #print 'imei in range %d' %(in_imei)
+                return True
+        #print 'imei not in range %d' %(in_imei)
+        return False
+        
     def __init__(self, master=None):
         
         self.IMEIAndChipIDPair = []
@@ -1220,6 +1238,8 @@ class Application(Frame):
         self.ref_path_list = []
         
         self.olpWhenCpyByChipID = []
+        
+        self.imei_range_arry = []
         
         Frame.__init__(self, master)
         self.pack()
