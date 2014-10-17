@@ -34,7 +34,7 @@ IS_FOR_CASTLE_TST = True #False True
 #current_version = "v1.1210Beta" #-->add error message box for exceptions
 #current_version = "v1.1212Beta" #-->divided top view to two sheet, for abnormal data view 
 #current_version = "v1.1220Beta" #-->more REF calibrate data for check, not use 'X' at invalid imei
-current_version = "v6.0000Beta" #-->copy cal file to custom dir
+current_version = "check v6.0003Beta" #-->copy cal file to custom dir
 
 class Application(Frame):
     xlsioException = 0
@@ -67,7 +67,7 @@ class Application(Frame):
         for i in range(0,len(fileget)):
             if isfile(fullfilename[i]):#only save files
                 #save WriteIMEI*.ini files
-                p = re.compile("WriteIMEI.*\.ini")
+                p = re.compile("WriteIMEI.*\.ini$")
                 matchit = p.match(fileget[i])
                 if matchit:
                     #print matchit.group()
@@ -325,7 +325,6 @@ class Application(Frame):
             matchit1 = 0
             matchit2 = 0
             matchit3 = 0
-            matchit4 = 0
             strIMEI = 0
             strChipID = 0
             strTime = 0
@@ -382,14 +381,14 @@ class Application(Frame):
                     if(readState == 2):
                         readState = 3
                         strChipID = matchit3.group()[4:36]
-                        
+                """        
                 ischeck = "check=1"
                 matchit4 = re.search(ischeck, line)
                 if matchit4:
                     if(readState == 3):
                         readState = 4
-                        
-                if readState == 4:
+                """        
+                if readState == 3:
                     t_pair = (strIMEI, strChipID, strTime)
                     if(t_pair not in self.IMEIAndChipIDPair):
                         self.IMEIAndChipIDPair.append(t_pair)
@@ -472,25 +471,29 @@ class Application(Frame):
         
         #excel:::
         self.lb_title["text"] = 'Generate result xls'
-        workbook = xlwt.Workbook()
-        #self.form_result_excel(workbook)
-        self.form_total_view_excel(workbook)
-        self.form_total_abnormal_excel(workbook)
-        """
-        self.form_band_confirm_excel(workbook)
-        self.form_comparison_excel(workbook)
-        if(int(self.config_ini_data['check_st33_files'])):
-            self.form_st33_check_excel(workbook)
-        self.form_combine_result_excel(workbook)
-        """
         
-        '''    
-        self.try_to_close_xls_program()
-        if os.path.isfile('TotalView.xls'):
-            print 'Begin to delete TotalView.xls'
-            os.remove('TotalView.xls')    
-        '''    
         try:
+            workbook = xlwt.Workbook()
+            
+            self.form_total_view_excel(workbook)
+            self.form_total_abnormal_excel(workbook)
+            self.form_result_excel(workbook)
+            
+            """
+            self.form_band_confirm_excel(workbook)
+            self.form_comparison_excel(workbook)
+            if(int(self.config_ini_data['check_st33_files'])):
+                self.form_st33_check_excel(workbook)
+            self.form_combine_result_excel(workbook)
+            """
+            
+            '''    
+            self.try_to_close_xls_program()
+            if os.path.isfile('TotalView.xls'):
+                print 'Begin to delete TotalView.xls'
+                os.remove('TotalView.xls')    
+        '''    
+
             #os.system('taskkill /f /im et.exe')
             #os.system('taskkill /f /im EXCEL.EXE')
 
