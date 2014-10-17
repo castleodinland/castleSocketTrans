@@ -848,7 +848,7 @@ class Application(Frame):
     
     def form_result_excel(self, workbook):
         ttoffset = 0
-        worksheet = workbook.add_sheet('result', cell_overwrite_ok=True)
+        worksheet = workbook.add_sheet('resultb', cell_overwrite_ok=True)
         worksheet.col(0).width =  256 * 50
         worksheet.col(1).width =  256 * 26
         worksheet.write_merge(ttoffset, ttoffset, 0, 1, '*****Check calibration files consistency:*****', self.title_style)
