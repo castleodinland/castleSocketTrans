@@ -34,7 +34,7 @@ IS_FOR_CASTLE_TST = True #False True
 #current_version = "v1.1210Beta" #-->add error message box for exceptions
 #current_version = "v1.1212Beta" #-->divided top view to two sheet, for abnormal data view 
 #current_version = "v1.1220Beta" #-->more REF calibrate data for check, not use 'X' at invalid imei
-current_version = "check v6.0003Beta" #-->copy cal file to custom dir
+current_version = "[check] v6.0010Beta" #-->copy cal file to custom dir
 
 class Application(Frame):
     xlsioException = 0
@@ -886,8 +886,23 @@ class Application(Frame):
         the_liter = 0
         for tChipID in list(allCalNumInCal-mixCalNum):
             worksheet.write(the_liter + ttoffset, 0, tChipID, self.nordata_style)
+            tResult = ''
+            if(self.if_cal_file_is_bad_cal(tChipID)):
+                tResult = 'Bad Data'
+            else:
+                if(self.if_cal_file_is_dual_defualt(tChipID)):
+                    tResult = 'Dual Defual'
+                elif(self.if_cal_file_is_quad_defualt(tChipID)):
+                    tResult = 'Quad Defual'
+                else:
+                    tResult = 'OK'
+            if tResult == 'OK':
+                tStyle = self.nordata_style
+            else:
+                tStyle = self.abnordata_style
+            worksheet.write(the_liter + ttoffset, 1, tResult, tStyle)
             #worksheet.write(the_liter + ttoffset, 1, self.get_imei_by_chipid(tChipID), self.label_style)
-            the_liter = the_liter + 1
+            the_liter += 1
         ttoffset = ttoffset + len(list(allCalNumInCal-mixCalNum)) + 2
         
         ###
@@ -1224,7 +1239,7 @@ class Application(Frame):
         
         self.totalView = []
         
-        self.version_info = "imei_cal_match_it version" + current_version
+        self.version_info = "imei_cal_match_it version " + current_version
         self.a_null_chip_id = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
         
         self.overlaped_imei = [] #different imei use same chipid with cal

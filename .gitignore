@@ -239,6 +239,11 @@ src/cal_3g/*
 src/tst_null_folder/*
 src/WriteIMEI/*
 src/WriteIMEI1/*
+src/WriteIMEI2/*
+src/*.rar
+src/*.zip
+src/database_dir/*
+
 
 #make exe build
 src/PyInstaller-2.1/imei_cal_match_it_50_gui/*
