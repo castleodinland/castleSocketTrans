@@ -16,10 +16,12 @@ import zipfile
 #DefaultButton = 0 -->Write
 #DefaultButton = 1 -->Check
 
-def error_exit():
+keys_need_check = ['SDS', 'METADB']
+
+def error_and_pause():
     if(os.path.isdir('temp')):
         shutil.rmtree('temp')
-    print "Error not finished!"
+    print "Error and not finished!"
     os.system('pause')
 
 def zip_dir(dirname,zipfilename):
@@ -40,12 +42,29 @@ def zip_dir(dirname,zipfilename):
 
 if __name__=="__main__":
     
-    #zip_dir('dist', 'dist_zip.zip')
-    isexist = os.path.isfile('factory_config.ini') 
-    if(not isexist):
+    #check files and dirs
+    if(not os.path.isfile('factory_config.ini') ):
         print "factory_config.ini not existed."
-        error_exit()
+        error_and_pause()
         sys.exit(0)
+
+    if(not os.path.isdir('WriteIMEI')):
+        print "WriteIMEI not existed."
+        error_and_pause()
+        sys.exit(0)
+        
+    if(not os.path.isfile('WriteIMEI\\WriteIMEI.ini') ):
+        print "WriteIMEI.ini not existed for WriteIMEI."
+        error_and_pause()
+        sys.exit(0)
+        
+    if(os.path.isdir('WriteIMEI\\cal')):
+        print 'has WriteIMEI\\cal'
+        if len(os.listdir('WriteIMEI\\cal')) == 0:#no file under cal
+            print 'no file in WriteIMEI\\cal'
+            donotdel = open("WriteIMEI\\cal\\DONOTDEL",'w')
+            donotdel.write('DO NOT DEL FOR ZIP\n')
+            donotdel.close()
  
     config = cparser.ConfigParser()
     config.read("factory_config.ini")
@@ -57,6 +76,12 @@ if __name__=="__main__":
             print "Key '%s' has value '%s'" % (key, value)
             config_ini_data[key] = value
             sorted_key.append(key)
+        
+        for tKey in keys_need_check:
+            if tKey not in sorted_key:
+                print tKey + " not existed for parameter."
+                error_and_pause()
+                sys.exit(0)
         
         need_sds_str = ''
         if(config_ini_data['SDS'] == '0'):
@@ -84,7 +109,7 @@ if __name__=="__main__":
         
         if(not os.path.isfile("database_dir\\"+config_ini_data['METADB'])):
             print "database_dir\\" + config_ini_data['METADB'] +' not existed!!!'
-            error_exit()
+            error_and_pause()
             sys.exit(0)
         shutil.copyfile("database_dir\\"+config_ini_data['METADB'], current_dir + config_ini_data['METADB'])
         zip_dir('temp', zipfile_name_write)
@@ -105,7 +130,7 @@ if __name__=="__main__":
         
         if(not os.path.isfile("database_dir\\"+config_ini_data['METADB'])):
             print "database_dir\\" + config_ini_data['METADB'] +' not existed!!!'
-            error_exit()
+            error_and_pause()
             sys.exit(0)
         shutil.copyfile("database_dir\\"+config_ini_data['METADB'], current_dir + config_ini_data['METADB'])
   
