@@ -52,11 +52,12 @@ if __name__=="__main__":
         print "WriteIMEI not existed."
         error_and_pause()
         sys.exit(0)
-        
+    """
     if(not os.path.isfile('WriteIMEI\\WriteIMEI.ini') ):
         print "WriteIMEI.ini not existed for WriteIMEI."
         error_and_pause()
         sys.exit(0)
+    """    
         
     if(os.path.isdir('WriteIMEI\\cal')):
         print 'has WriteIMEI\\cal'
@@ -98,9 +99,12 @@ if __name__=="__main__":
         #write package
         current_dir = 'temp\\WriteIMEI\\'
         shutil.copytree('WriteIMEI', 'temp\\WriteIMEI')
+        if(os.path.isfile(current_dir + "WriteIMEI.ini")):
+            os.remove(current_dir + "WriteIMEI.ini")
         configg = cparser.ConfigParser()
         configg.read(current_dir + "WriteIMEI.ini")
         
+        configg.add_section('IMEIRange')
         for key in sorted_key:
             configg.set('IMEIRange', key, config_ini_data[key])
         configg.set('IMEIRange', 'DefaultButton', '0')
@@ -119,9 +123,12 @@ if __name__=="__main__":
         #check package
         current_dir = 'temp\\WriteIMEI\\'
         shutil.copytree('WriteIMEI', 'temp\\WriteIMEI')
+        if(os.path.isfile(current_dir + "WriteIMEI.ini")):
+            os.remove(current_dir + "WriteIMEI.ini")
         configg = cparser.ConfigParser()
         configg.read(current_dir + "\\WriteIMEI.ini")
         
+        configg.add_section('IMEIRange')
         for key in sorted_key:
             configg.set('IMEIRange', key, config_ini_data[key])
         configg.set('IMEIRange', 'DefaultButton', '1')
