@@ -255,3 +255,4 @@ src/config.ini
 src/main_ini_file.ini
 src/mydatabase.db3
 src/config_backup.ini
+src/factory_config.ini

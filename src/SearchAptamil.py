@@ -4,6 +4,7 @@ import requests
 import time
 import thread
 from threading import Timer
+from threading import _Timer
 
 import smtplib,re  
 from email.mime.text import MIMEText  
@@ -12,25 +13,26 @@ WARNMAILBLK = False
 TIMERRUNNING = 0
 TIMERMAIL = 0
 
+#castle_odinland@126.com
+#castleodinland@yeah.com
+
+sourc_mail_addr = "cexuscastle@126.com"
+dest_mail_addr = ["cexuscastle@126.com"]
+
 def sendWarningMail (text):  
     msg = MIMEText(text)  
     msg['Subject'] = "Aptamil 1+ comming!!!"  
-    msg['From'] = "castle_odinland@126.com"  
+    msg['From'] = sourc_mail_addr  
     smtp = smtplib.SMTP()  
-    p=re.compile(r'.*@(.*)')  
-    cn=p.findall("castle_odinland@126.com")[0]  
-    smtp.connect(r'smtp.126.com')  
-    smtp.login("castle_odinland@126.com", "10174446")  
-    smtp.sendmail("castle_odinland@126.com",["190917524@qq.com"], msg.as_string())  
+    smtp.connect(r'smtp.126.com')
+    smtp.login(sourc_mail_addr, "zxcvbnm123")  
+    smtp.sendmail(sourc_mail_addr, dest_mail_addr, msg.as_string())  
     smtp.close() 
     
 
 def canSendMailAgain():
     global WARNMAILBLK 
     WARNMAILBLK = False
-
-def sendSMSByFetion():
-    r = requests.get('http://sms.api.bz/fetion.php?username=13916706878&password=twtykknd@2&sendto=13916706878&message=hellohello', timeout=10)
 
 def runAnotherStart():
     global TIMERRUNNING 
@@ -60,14 +62,14 @@ def checkAptamilHandler():
     print r.encoding
     print r.text.encode('utf-8')
     """
-    
     thtml = r.text.encode('utf-8')
     
     tResult_h = 0
     tResult_t = 0
-    firstTitle = 0
+
     #search title
     for i in range(0,4):
+        #now we only search Kinder-Milch 1 plus
         tResult_h = thtml.find('<span itemprop="itemOffered">Kinder-Milch 1 plus', tResult_t)
         if(tResult_h == -1):
             #if miss one title, break, start another try
@@ -76,12 +78,12 @@ def checkAptamilHandler():
         else:
             tResult_t = thtml.find('<div class="product-row span-20', tResult_h)
             if(tResult_t == -1):
-                #if miss one title, break, start another try
+                #if miss one ending, break, start another try
                 runAnotherStart()
                 return
-            #srh_rst_tt_lis.append(tResult_h)
             strs_for_item.append(thtml[tResult_h:tResult_t])
 
+    #parse the item and save into main_rst
     for str in strs_for_item:
         #print '---------------------------------------------------------'
         #print str + '\n'
@@ -106,20 +108,24 @@ def checkAptamilHandler():
    
     email_str = ""
     for node in main_rst:
-        email_str.join( "%s|%sEUR|%s\n" % (node[0], node[1], node[2]) )
+        email_str += "%s|%sEUR|%s\n" % (node[0], node[1], node[2])
+     
+    #only test   
+    #sendWarningMail(email_str)
     
     timestr = time.ctime(time.time())
         
-    print ("%s\n%r" % (timestr.encode('ascii'), main_rst))
+    print ("%s\n%s" % (timestr.encode('ascii'), email_str))
     outResultFileHandle = open("SearchAptamil.log",'a')
-    outResultFileHandle.write("%s\n%r\n" % (timestr.encode('ascii'), main_rst))
+    outResultFileHandle.write("%s\n%s" % (timestr.encode('ascii'), email_str))
     
+    #check if Shippable, send warning email
     for node in main_rst:
         if(node[2] == True and WARNMAILBLK == False):
             sendWarningMail(email_str);
             WARNMAILBLK = True
             outResultFileHandle.write("Send Email once.\n")
-            TIMERMAIL = Timer(600.0, canSendMailAgain, [])
+            TIMERMAIL = Timer(600.0, canSendMailAgain, [])#600s to send again
             TIMERMAIL.start()
             break
             
@@ -127,12 +133,23 @@ def checkAptamilHandler():
     TIMERRUNNING = Timer(60.0, checkAptamilHandler, [])
     TIMERRUNNING.start()
 
-
-if __name__=="__main__":
+def main_run():
+    global TIMERRUNNING 
+    global TIMERMAIL 
     
     TIMERRUNNING = Timer(0.5, checkAptamilHandler, [])
     TIMERRUNNING.start()
     while(True):
-        pass
+        content = raw_input("")
+        if content == 'exit':
+            if(isinstance(TIMERRUNNING, _Timer)):
+                TIMERRUNNING.cancel()
+            if(isinstance(TIMERMAIL, _Timer)):
+                TIMERMAIL.cancel()
+            break
     
+
+if __name__=="__main__":
+    main_run()
+    print 'ByeBye'
     
