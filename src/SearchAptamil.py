@@ -28,7 +28,6 @@ def sendWarningMail (text):
     smtp.login(sourc_mail_addr, "zxcvbnm123")  
     smtp.sendmail(sourc_mail_addr, dest_mail_addr, msg.as_string())  
     smtp.close() 
-    
 
 def canSendMailAgain():
     global WARNMAILBLK 
@@ -105,17 +104,20 @@ def checkAptamilHandler():
         else:
             shippable = False
         main_rst.append((pitemOffered, rawPrice, shippable))
-   
-    email_str = ""
+    
+    timestr = time.ctime(time.time())
+    
+    email_str = "%s\n" % (timestr)
+    
     for node in main_rst:
         email_str += "%s|%sEUR|%s\n" % (node[0], node[1], node[2])
      
     #only test   
     #sendWarningMail(email_str)
     
-    timestr = time.ctime(time.time())
+    
         
-    print ("%s\n%s" % (timestr.encode('ascii'), email_str))
+    print ("%s" % (email_str))
     outResultFileHandle = open("SearchAptamil.log",'a')
     outResultFileHandle.write("%s\n%s" % (timestr.encode('ascii'), email_str))
     
@@ -147,7 +149,7 @@ def main_run():
             if(isinstance(TIMERMAIL, _Timer)):
                 TIMERMAIL.cancel()
             break
-    
+   
 
 if __name__=="__main__":
     main_run()
