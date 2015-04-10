@@ -159,7 +159,7 @@ class Application(Frame):
         self.ttext.insert(END, '----------------------------------------------\r\n')
         self.ttext.insert(END, '----------------------------------------------\r\n') 
         
-        self.returnAndReloaderWidgets('Finised, next?', 'turquoise', 'active')
+        self.returnAndReloaderWidgets('P A S S', 'SpringGreen', 'active')
         
     def returnAndReloaderWidgets(self, label_text, label_bg, brun_state):
         self.llabel['text'] = label_text
@@ -194,13 +194,17 @@ class Application(Frame):
         
         self.ttext = Text(main_frame, font = ftText)
         self.ttext.grid(row=1, column=0,columnspan=2, sticky=W+E)
+        #self.ttext['background'] = 'Aquamarine'
         #self.ttext['state'] = 'disabled'
         #self.ttext.bind("<KeyPress>", lambda e : "break")
-        #self.ttext["state"] = 'disable'
-        #self.ttext.bind("<Enter>", lambda e : "break")
         
         #self.pbar = ttk.Progressbar(main_frame)
         #self.pbar.grid(row=2, column=0, columnspan=2, sticky=W+E+N+S)
+        
+        self.scrollbar = Scrollbar(main_frame)
+        self.scrollbar.grid(row=1, column=1, sticky=N+S+E)
+        self.scrollbar.config(command=self.ttext.yview)
+        self.ttext['yscrollcommand'] = self.scrollbar.set
         
         self.brun = Button(main_frame, text='RUN', width=20, font = ftButton)
         self.brun.grid(row=3, column=0, sticky=W+E+N+S)
