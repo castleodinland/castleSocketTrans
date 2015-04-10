@@ -1,19 +1,19 @@
 import Tkinter
 from Tkinter import *
-import ttk
-import tkMessageBox
 import tkFont
 import tkFileDialog
-import thread
+import threading
 import time
-from multiprocessing import Process,Queue
 import os
-
 import subprocess
+
+
 class Application(Frame):
     
     def start_to_download(self):
-        self.dl_thread = thread.start_new_thread(self.run_jlink_check, ())
+        #self.dl_thread = thread.start_new_thread(self.run_jlink_check, ())
+        self.dl_thread = threading.Thread(target=self.run_jlink_check)
+        self.dl_thread.start()
     
     def run_jlink_check(self):
         
@@ -29,9 +29,14 @@ class Application(Frame):
             return
         
         JLink_dir = ''
+        nRFSto_dir = ''
         JLink_cmd = "JLink.exe"
+        nRFSto_cmd = "nrfjprog.exe"
         JLink_dir_win7 = "C:\\Program Files (x86)\\SEGGER\\JLinkARM_V474b\\"
         JLink_dir_xp = "C:\\Program Files\\SEGGER\\JLinkARM_V474b\\"
+        nRFSto_dir_win7 = "C:\\Program Files (x86)\\Nordic Semiconductor\\nrf51\\bin\\"
+        nRFSto_dir_xp = "C:\\Program Files\\\Nordic Semiconductor\\\nrf51\\bin\\"
+        
         if(os.path.isfile(JLink_dir_win7+JLink_cmd)):
             JLink_dir = JLink_dir_win7
         elif(os.path.isfile(JLink_dir_xp+JLink_cmd)):
@@ -39,6 +44,15 @@ class Application(Frame):
         else:
             self.returnAndReloaderWidgets('NO JLink Driver!', 'red', 'active')
             return
+        """
+        if(os.path.isfile(nRFSto_dir_win7+nRFSto_cmd)):
+            nRFSto_dir = nRFSto_dir_win7
+        elif(os.path.isfile(nRFSto_dir_xp+nRFSto_cmd)):
+            nRFSto_dir = nRFSto_dir_xp
+        else:
+            self.returnAndReloaderWidgets('NO nRF Stdio!', 'red', 'active')
+            return       
+        """
         
         self.llabel['text'] = 'Running...'
         self.llabel['bg'] = 'turquoise'
@@ -48,28 +62,33 @@ class Application(Frame):
         self.ttext.insert(END, 'Searching JLink Drivers...\r\n')
 
         RUN_CMD = JLink_dir + JLink_cmd
-        self.current_process = subprocess.Popen(RUN_CMD, 
-                           shell=False, 
-                           stdin=subprocess.PIPE,
-                           stdout=subprocess.PIPE, 
-                           stderr=subprocess.STDOUT,
-                           env=None,
-                           startupinfo=st)#st need show the windows, or will cause block.
-        
-        self.current_process.stdin.write('exit\r\n')
-        self.current_process.wait()
+        try:
+            self.current_process = subprocess.Popen(RUN_CMD, 
+                               shell=False, 
+                               stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.STDOUT,
+                               env=None,
+                               startupinfo=st)#st need show the windows, or will cause block.
+            
+            self.current_process.stdin.write('exit\r\n')
+            self.current_process.wait()
+        except Exception as e:
+            self.returnAndReloaderWidgets('JLink_cmd error!', 'red', 'active')
+            self.ttext.insert(END, "Exception: %r\n" % (e) )
+            return
         
         self.JLinkSn = ''
-        str = self.current_process.stdout.readline()
+        tstr = self.current_process.stdout.readline()
         
-        while str:
+        while tstr:
             p = re.compile("S/N: ([0-9A-Fa-f]{9})")
-            matchit = p.match(str)
+            matchit = p.match(tstr)
             if matchit:
                 self.JLinkSn = matchit.group(1)
                 break
-            #self.ttext.insert(INSERT, str)
-            str = self.current_process.stdout.readline()
+            #self.ttext.insert(INSERT, tstr)
+            tstr = self.current_process.stdout.readline()
         
         if(self.JLinkSn):
             self.ttext.insert(END, 'Get JLink SN:' + self.JLinkSn + '\r\n')
@@ -83,19 +102,25 @@ class Application(Frame):
         #Erase the Flash
         self.ttext.insert(END, '----------------------------------------------\r\n')
         self.ttext.insert(END, 'Erase the Flash\r\n')
-        Erase_cmd = "nrfjprog.exe -s " + self.JLinkSn +" --eraseall"
-        self.current_process = subprocess.Popen(Erase_cmd, 
-                           shell=False, 
-                           stdin=subprocess.PIPE,
-                           stdout=subprocess.PIPE, 
-                           stderr=subprocess.STDOUT,
-                           env=None,
-                           startupinfo=st)
-        errcode = self.current_process.wait()
-        str = self.current_process.stdout.readline()
-        while str:
-            self.ttext.insert(END, str)
-            str = self.current_process.stdout.readline()
+        Erase_cmd = nRFSto_dir + "nrfjprog.exe -s " + self.JLinkSn +" --eraseall"
+        try:
+            self.current_process = subprocess.Popen(Erase_cmd, 
+                               shell=False, 
+                               stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.STDOUT,
+                               env=None,
+                               startupinfo=st)
+            errcode = self.current_process.wait()
+        except Exception as e:
+            self.returnAndReloaderWidgets('Erase failed!', 'red', 'active')
+            self.ttext.insert(END, "Exception: %r\n" % (e) )
+            return
+        
+        tstr = self.current_process.stdout.readline()
+        while tstr:
+            self.ttext.insert(END, tstr)
+            tstr = self.current_process.stdout.readline()
         self.ttext.see(END)
         
         if(errcode):
@@ -104,28 +129,33 @@ class Application(Frame):
         
         self.ttext.insert(END, '----------------------------------------------\r\n')
         self.ttext.insert(END, 'Begin to Program...\r\n')
-        Program_cmd = 'nrfjprog.exe -s ' + self.JLinkSn +' --program ' + self.HexFile +'  --reset'
-        self.current_process = subprocess.Popen(Program_cmd, 
-                           shell=False, 
-                           stdin=subprocess.PIPE,
-                           stdout=subprocess.PIPE, 
-                           stderr=subprocess.STDOUT,
-                           env=None,
-                           startupinfo=st)
-        errcode = self.current_process.wait()
-        
+        Program_cmd = nRFSto_dir + 'nrfjprog.exe -s ' + self.JLinkSn +' --program ' + self.HexFile +'  --reset'
+        try:
+            self.current_process = subprocess.Popen(Program_cmd, 
+                               shell=False, 
+                               stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE, 
+                               stderr=subprocess.STDOUT,
+                               env=None,
+                               startupinfo=st)
+            errcode = self.current_process.wait()
+        except Exception as e:
+            self.returnAndReloaderWidgets('Download failed!', 'red', 'active')
+            self.ttext.insert(END, "Exception: %r\n" % (e) )
+            return
+            
         if(errcode):
             self.returnAndReloaderWidgets('Download failed!', 'red', 'active')
             self.ttext.insert(END, "ErrorCode: %d\n" % (errcode) )
             return
         
-        str = self.current_process.stdout.readline()
-        while str:
-            self.ttext.insert(END, str)
-            str = self.current_process.stdout.readline()
+        tstr = self.current_process.stdout.readline()
+        while tstr:
+            self.ttext.insert(END, tstr)
+            tstr = self.current_process.stdout.readline()
         self.ttext.see(END)
-        timestr = time.ctime(time.time())
-        self.ttext.insert(END, "%s\n" % (timestr))
+        timetstr = time.ctime(time.time())
+        self.ttext.insert(END, "%s\n" % (timetstr))
         self.ttext.insert(END, '----------------------------------------------\r\n')
         self.ttext.insert(END, '----------------------------------------------\r\n') 
         
@@ -155,7 +185,7 @@ class Application(Frame):
         ftText = tkFont.Font(family = 'Verdana', size = 10, weight = tkFont.BOLD)
         ftButton = tkFont.Font(family = 'Verdana', weight = tkFont.BOLD)
         
-        self.llabel = Label(main_frame, text="Ready", width=20, bg="turquoise", font = ftLabel, anchor="w")
+        self.llabel = Label(main_frame, text="Ready", width=20, bg="turquoise", font = ftLabel)
         self.llabel.grid(row=0, column=0, sticky=W+E) #columnspan=2
         
         self.bfile = Button(main_frame, text='HEX File', width=20, font = ftButton)
@@ -197,7 +227,7 @@ class Application(Frame):
 if __name__=="__main__":
 
     root = Tk()
-    root.title("JLink TST")
+    root.title("JLink Download nRF")
     
     #lock the root size
     root.resizable(False,False)
