@@ -7,7 +7,6 @@ import time
 import os
 import subprocess
 
-
 class Application(Frame):
     
     def start_to_download(self):
@@ -29,13 +28,10 @@ class Application(Frame):
             return
         
         JLink_dir = ''
-        nRFSto_dir = ''
+        nRFSto_dir = ''#
         JLink_cmd = "JLink.exe"
-        nRFSto_cmd = "nrfjprog.exe"
         JLink_dir_win7 = "C:\\Program Files (x86)\\SEGGER\\JLinkARM_V474b\\"
         JLink_dir_xp = "C:\\Program Files\\SEGGER\\JLinkARM_V474b\\"
-        nRFSto_dir_win7 = "C:\\Program Files (x86)\\Nordic Semiconductor\\nrf51\\bin\\"
-        nRFSto_dir_xp = "C:\\Program Files\\\Nordic Semiconductor\\\nrf51\\bin\\"
         
         if(os.path.isfile(JLink_dir_win7+JLink_cmd)):
             JLink_dir = JLink_dir_win7
@@ -100,7 +96,7 @@ class Application(Frame):
         st.wShowWindow=subprocess.SW_HIDE
         
         #Erase the Flash
-        self.ttext.insert(END, '----------------------------------------------\r\n')
+        self.ttext.insert(END, self.split_line)
         self.ttext.insert(END, 'Erase the Flash\r\n')
         Erase_cmd = nRFSto_dir + "nrfjprog.exe -s " + self.JLinkSn +" --eraseall"
         try:
@@ -127,7 +123,7 @@ class Application(Frame):
             self.returnAndReloaderWidgets('Erase failed!', 'red', 'active')
             return
         
-        self.ttext.insert(END, '----------------------------------------------\r\n')
+        self.ttext.insert(END, self.split_line)
         self.ttext.insert(END, 'Begin to Program...\r\n')
         Program_cmd = nRFSto_dir + 'nrfjprog.exe -s ' + self.JLinkSn +' --program ' + self.HexFile +'  --reset'
         try:
@@ -156,10 +152,11 @@ class Application(Frame):
         self.ttext.see(END)
         timetstr = time.ctime(time.time())
         self.ttext.insert(END, "%s\n" % (timetstr))
-        self.ttext.insert(END, '----------------------------------------------\r\n')
-        self.ttext.insert(END, '----------------------------------------------\r\n') 
+        self.ttext.insert(END, self.split_line)
+        self.ttext.insert(END, self.split_line) 
         
         self.returnAndReloaderWidgets('P A S S', 'SpringGreen', 'active')
+        #self.returnAndReloaderWidgets('P A S S', 'LightGreen', 'active')
         
     def returnAndReloaderWidgets(self, label_text, label_bg, brun_state):
         self.llabel['text'] = label_text
@@ -170,13 +167,14 @@ class Application(Frame):
             
     def stopCurrentProcess(self):
         root.quit()
-        pass
             
     def selectHexFile(self):
         self.HexFile = ''
         self.HexFile = tkFileDialog.askopenfilename(filetypes=[("HEX Files", ".hex")])
         if(self.HexFile):
             self.ttext.insert(END, 'Hex file: ' + self.HexFile + '\n')
+        else:
+            self.ttext.insert(END, 'No Hex file selected.' + '\n')
         self.llabel['text'] = 'Ready'
         self.llabel['bg'] = 'turquoise'
         
@@ -194,7 +192,7 @@ class Application(Frame):
         
         self.ttext = Text(main_frame, font = ftText)
         self.ttext.grid(row=1, column=0,columnspan=2, sticky=W+E)
-        #self.ttext['background'] = 'Aquamarine'
+        self.ttext['background'] = '#cce8cc'
         #self.ttext['state'] = 'disabled'
         #self.ttext.bind("<KeyPress>", lambda e : "break")
         
@@ -227,11 +225,16 @@ class Application(Frame):
         main_frame.pack(fill="y", expand=1)
         self.createWidgets(main_frame)
         self.dl_thread = 0
+        self.split_line = ''
+        
+        for i in range(0,100):
+            self.split_line += '-'
+        self.split_line += '\r\n'
 
 if __name__=="__main__":
 
     root = Tk()
-    root.title("JLink Download nRF")
+    root.title("JLink nRF Simple Downloader v1.1")
     
     #lock the root size
     root.resizable(False,False)
